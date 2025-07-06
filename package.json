@@ -1,0 +1,12 @@
+{
+  "name": "my-portfolio-workspace",
+  "version": "1.0.0",
+  "description": "Portfolio website workspace",
+  "scripts": {
+    "dev": "cd front && npm run dev",
+    "build": "cd front && npm run build",
+    "preview": "cd front && npm run preview",
+    "install:front": "cd front && npm install"
+  },
+  "private": true
+}
