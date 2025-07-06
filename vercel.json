@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd front && npm run build",
+  "outputDirectory": "front/dist",
+  "installCommand": "cd front && npm install",
+  "framework": "astro"
+}
