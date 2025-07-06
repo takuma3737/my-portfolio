@@ -1,0 +1,70 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getCollection, getEntry } from 'astro:content';
+
+// 静的パス生成のためのgetStaticPaths関数
+export async function getStaticPaths() {
+    const articles = await getCollection('articles');
+    return articles.map(article => ({
+        params: { slug: article.slug },
+        props: { article },
+    }));
+}
+
+// 記事データの取得
+const { article } = Astro.props;
+const { Content, headings } = await article.render();
+
+// 記事メタデータの整形
+const post = {
+    title: article.data.title,
+    date: article.data.date.toLocaleDateString('ja-JP', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    }),
+    emoji: article.data.emoji,
+    tags: article.data.tags,
+    description: article.data.description
+};
+---
+
+<Layout title={`${post.title} - My Tech Journey`}>
+<main class="container mx-auto px-6 py-12">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+
+    <div class="lg:col-span-2 bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-gray-200/50">
+        <article class="prose max-w-none">
+            <header>
+                <div class="text-4xl mb-4">{post.emoji}</div>
+                <h1 class="text-3xl md:text-4xl font-bold !mb-2">{post.title}</h1>
+                <div class="flex items-center gap-4 text-sm text-gray-500">
+                    <time datetime={post.date}>{post.date}</time>
+                    <div class="flex items-center gap-2">
+                        {post.tags.map(tag => <span class="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{tag}</span>)}
+                    </div>
+                </div>
+            </header>
+            <div class="mt-8 prose prose-gray max-w-none">
+                <Content />
+            </div>
+        </article>
+    </div>
+
+    <aside class="lg:col-span-1">
+        <div class="sticky top-24">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/50">
+                <h3 class="font-bold text-lg mb-4 border-l-4 border-accent-green pl-3">目次</h3>
+                <ul id="toc" class="space-y-2 text-sm">
+                    {headings.map(heading => (
+                        <li class:list={[{'pl-4': heading.depth === 3}]}>
+                            <a href={`#${heading.slug}`} class="toc-link block text-gray-600 hover:text-green-600 transition-all duration-300">{heading.text}</a>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
+    </aside>
+</div>
+</main>
+</Layout>

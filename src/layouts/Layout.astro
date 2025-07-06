@@ -1,0 +1,65 @@
+--- 
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Astro description" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+	</head>
+	<body>
+        <Header />
+		<slot />
+        <Footer />
+	</body>
+</html>
+
+<style is:global>
+	/* 基本フォント設定 */
+	body {
+		font-family: 'Noto Sans JP', 'Inter', sans-serif;
+	}
+	
+	/* 記事本文のスタイル */
+	.prose h1 {
+		@apply text-3xl font-bold mt-8 mb-6 pb-3 border-b-2 border-gray-200;
+	}
+	.prose h2 {
+		@apply text-2xl font-bold mt-10 mb-4 pb-2 border-b border-gray-300;
+	}
+	.prose h3 {
+		@apply text-xl font-bold mt-8 mb-3;
+	}
+	.prose h4 {
+		@apply text-lg font-semibold mt-6 mb-2;
+	}
+	.prose p {
+		@apply mb-5 leading-relaxed;
+	}
+	.prose a {
+		@apply text-green-600 underline hover:text-green-700;
+	}
+	.prose ul {
+		@apply list-disc pl-6 mb-5;
+	}
+	.prose blockquote {
+		@apply border-l-4 border-green-600 pl-4 my-6 italic text-gray-600;
+	}
+</style>

@@ -1,0 +1,67 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import { getCollection } from 'astro:content';
+
+// Content Collectionsから記事一覧を取得
+const articles = await getCollection('articles');
+
+// 公開済みの記事のみを取得し、日付順にソート
+const posts = articles
+    .filter(article => !article.data.draft)
+    .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
+    .map(article => ({
+        slug: article.slug,
+        url: `/articles/${article.slug}`,
+        title: article.data.title,
+        date: article.data.date.toLocaleDateString('ja-JP', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        }),
+        emoji: article.data.emoji,
+        tags: article.data.tags,
+        description: article.data.description
+    }));
+---
+
+<Layout title="記事一覧 - Takuma.dev">
+	<main class="container mx-auto px-6 py-12">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+            <div class="lg:col-span-2">
+                <header class="mb-8">
+                    <h1 class="text-3xl md:text-4xl font-bold">記事一覧</h1>
+                    <p class="mt-2 text-gray-600">技術的なメモや考えをまとめています。</p>
+                </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			{posts.map(post => (
+				<a href={post.url} class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+					<div class="flex items-start gap-4">
+						<div class="text-4xl">{post.emoji}</div>
+						<div class="flex-1">
+							<div class="flex items-center gap-2 mb-2 flex-wrap">
+								{post.tags.slice(0, 3).map(tag => 
+									<span class="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{tag}</span>
+								)}
+								{post.tags.length > 3 && (
+									<span class="text-xs text-gray-500">+{post.tags.length - 3}</span>
+								)}
+							</div>
+							<h3 class="font-bold text-lg mb-2">{post.title}</h3>
+							<p class="text-sm text-gray-600 mb-2">{post.description}</p>
+							<p class="text-xs text-gray-500">{post.date}</p>
+						</div>
+					</div>
+				</a>
+			))}
+        </div>
+
+        <nav class="flex justify-center items-center space-x-2 mt-12">
+            <a href="#" class="px-4 py-2 text-white bg-green-600 rounded-md shadow-sm">1</a>
+        </nav>
+    </div>
+	<Sidebar />
+</div>
+</main>
+</Layout>
