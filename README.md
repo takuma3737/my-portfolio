@@ -1,18 +1,47 @@
-# Astro Starter Kit: Minimal
+# My Portfolio
 
-```sh
-npm create astro@latest -- --template minimal
+このプロジェクトは、Astro を使用して構築された個人ポートフォリオサイトです。
+
+## 🚀 プロジェクト構成
+
+```text
+/
+├── front/                  # フロントエンド関連ファイル
+│   ├── public/            # 静的ファイル
+│   ├── src/               # ソースコード
+│   │   ├── components/    # Astroコンポーネント
+│   │   ├── content/       # マークダウンコンテンツ
+│   │   ├── layouts/       # レイアウトコンポーネント
+│   │   ├── pages/         # ページファイル
+│   │   └── styles/        # スタイルファイル
+│   ├── astro.config.mjs   # Astro設定
+│   ├── package.json       # パッケージ依存関係
+│   ├── tailwind.config.mjs # Tailwind CSS設定
+│   └── tsconfig.json      # TypeScript設定
+├── app/                   # バックエンド関連ファイル
+└── README.md              # このファイル
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/minimal)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/minimal)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/minimal/devcontainer.json)
+## 🧞 開発コマンド
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+プロジェクトのセットアップと開発を行うには、以下のコマンドを使用してください：
 
-## 🚀 Project Structure
+```bash
+# フロントエンドディレクトリに移動
+cd front
 
-Inside of your Astro project, you'll see the following folders and files:
+# 依存関係のインストール
+npm install
+
+# 開発サーバーの起動
+npm run dev
+
+# 本番ビルド
+npm run build
+
+# プレビュー
+npm run preview
+```
 
 ```text
 /

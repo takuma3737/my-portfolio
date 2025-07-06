@@ -1,10 +1,14 @@
 # build output
 dist/
+front/dist/
+
 # generated types
 .astro/
+front/.astro/
 
 # dependencies
 node_modules/
+front/node_modules/
 
 # logs
 npm-debug.log*
@@ -12,10 +16,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-
 # environment variables
 .env
 .env.production
+front/.env
+front/.env.production
 
 # macOS-specific files
 .DS_Store
