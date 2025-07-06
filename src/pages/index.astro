@@ -1,5 +1,24 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+// Content Collectionsから最新の記事を取得
+const articles = await getCollection('articles');
+const latestPosts = articles
+    .filter(article => !article.data.draft)
+    .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
+    .slice(0, 2) // 最新2件を取得
+    .map(article => ({
+        slug: article.slug,
+        url: `/articles/${article.slug}`,
+        title: article.data.title,
+        date: article.data.date.toLocaleDateString('ja-JP', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        }),
+        emoji: article.data.emoji
+    }));
 ---
 
 <Layout title="泉拓真 - HRTech Backend Engineer">
@@ -77,22 +96,17 @@ import Layout from '../layouts/Layout.astro';
                         最新の記事
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <a href="#" class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
-                            <div class="flex items-start gap-4"><div class="text-4xl">📝</div>
-                                <div>
-                                    <h3 class="font-bold text-lg text-gray-800">Astroでポートフォリオサイトを爆速構築</h3>
-                                    <p class="text-sm text-gray-500 mt-1">2025年7月6日</p>
+                        {latestPosts.map(post => (
+                            <a href={post.url} class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                                <div class="flex items-start gap-4">
+                                    <div class="text-4xl">{post.emoji}</div>
+                                    <div>
+                                        <h3 class="font-bold text-lg text-gray-800">{post.title}</h3>
+                                        <p class="text-sm text-gray-500 mt-1">{post.date}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </a>
-                        <a href="#" class="block bg-white p-6 rounded-2xl shadow-sm border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
-                            <div class="flex items-start gap-4"><div class="text-4xl">🚀</div>
-                                <div>
-                                    <h3 class="font-bold text-lg text-gray-800">パフォーマンスチューニングの勘所</h3>
-                                    <p class="text-sm text-gray-500 mt-1">2025年6月28日</p>
-                                </div>
-                            </div>
-                        </a>
+                            </a>
+                        ))}
                     </div>
                     <div class="text-center mt-8">
                         <a href="/articles" class="inline-block bg-green-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
