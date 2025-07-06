@@ -12,10 +12,10 @@ const latestPosts = articles
         slug: article.slug,
         url: `/articles/${article.slug}`,
         title: article.data.title,
-        date: article.data.date.toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+        date: article.data.date.toLocaleDateString('ja-JP', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         }),
         emoji: article.data.emoji
     }));
