@@ -62,4 +62,53 @@ const { title } = Astro.props;
 	.prose blockquote {
 		@apply border-l-4 border-green-600 pl-4 my-6 italic text-gray-600;
 	}
+	
+	/* 会話風コードブロックのスタイル */
+	.conversation-code {
+		@apply bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6;
+	}
+	.conversation-code .speaker {
+		@apply text-sm font-semibold text-gray-700 mb-2 border-b border-gray-200 pb-2;
+	}
+	.conversation-code .speaker::before {
+		content: "💬 ";
+	}
+	.conversation-code pre {
+		@apply bg-gray-900 text-white text-sm rounded-md p-3 overflow-x-auto;
+		margin: 0;
+	}
+	.conversation-code code {
+		@apply text-white;
+		background: transparent;
+		padding: 0;
+	}
+	
+	/* 標準のコードブロックのスタイル改善 */
+	.prose pre {
+		@apply bg-gray-900 text-white text-sm rounded-lg p-4 overflow-x-auto mb-6;
+	}
+	.prose code {
+		@apply bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm;
+	}
+	.prose pre code {
+		@apply bg-transparent text-white p-0;
+	}
+	
+	/* 会話風の質問・回答スタイル */
+	.qa-block {
+		@apply bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6;
+	}
+	.qa-block .question {
+		@apply text-sm font-semibold text-blue-700 mb-2;
+	}
+	.qa-block .question::before {
+		content: "🤔 ";
+	}
+	.qa-block .answer {
+		@apply text-gray-700 leading-relaxed;
+	}
+	.qa-block .answer::before {
+		content: "💡 ";
+		@apply text-yellow-500;
+	}
 </style>
