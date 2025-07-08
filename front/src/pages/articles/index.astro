@@ -1,6 +1,5 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import Sidebar from '../../components/Sidebar.astro';
 import { getCollection } from 'astro:content';
 
 // Content Collectionsから記事一覧を取得
@@ -23,6 +22,21 @@ const posts = articles
         tags: article.data.tags,
         description: article.data.description
     }));
+
+// タグ一覧とその数を集計
+const tagCounts: Record<string, number> = {};
+articles
+    .filter(article => !article.data.draft)
+    .forEach(article => {
+        article.data.tags.forEach(tag => {
+            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+    });
+
+// タグを数が多い順にソート
+const sortedTags = Object.entries(tagCounts)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
+    .map(([tag, count]) => ({ tag, count }));
 ---
 
 <Layout title="記事一覧 - Takuma.dev">
@@ -61,7 +75,20 @@ const posts = articles
             <a href="#" class="px-4 py-2 text-white bg-green-600 rounded-md shadow-sm">1</a>
         </nav>
     </div>
-	<Sidebar />
+    
+    <aside class="lg:col-span-1 space-y-8">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/50">
+            <h3 class="font-bold text-lg mb-4 border-l-4 border-green-600 pl-3">タグ一覧</h3>
+            <div class="space-y-2">
+                {sortedTags.map(({ tag, count }) => (
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                        <span class="text-gray-700">{tag}</span>
+                        <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{count}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    </aside>
 </div>
 </main>
 </Layout>
