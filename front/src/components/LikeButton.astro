@@ -1,0 +1,173 @@
+---
+interface Props {
+    articleSlug: string;
+}
+
+const { articleSlug } = Astro.props;
+---
+
+<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200/50 mt-6">
+    <div class="flex items-center justify-between">
+        <h3 class="font-medium text-gray-700">この記事はいかがでしたか？</h3>
+        <div class="flex items-center gap-4">
+            <!-- いいねボタン -->
+            <button 
+                id="like-button"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105"
+                data-article-slug={articleSlug}
+            >
+                <span id="like-icon" class="text-xl">👍</span>
+                <span id="like-text" class="font-medium">いいね</span>
+                <span id="like-count" class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm font-medium">0</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- メッセージ表示エリア -->
+    <div id="like-message" class="mt-3 text-center text-sm" style="display: none;"></div>
+</div>
+
+<script define:vars={{ articleSlug }}>
+    // LocalStorageのキー
+    const LIKES_KEY = `likes_${articleSlug}`;
+    const USER_LIKED_KEY = `user_liked_${articleSlug}`;
+
+    // 要素の取得
+    const likeButton = document.getElementById('like-button');
+    const likeIcon = document.getElementById('like-icon');
+    const likeText = document.getElementById('like-text');
+    const likeCount = document.getElementById('like-count');
+    const likeMessage = document.getElementById('like-message');
+
+    // いいね数を取得
+    function getLikeCount() {
+        try {
+            const count = localStorage.getItem(LIKES_KEY);
+            return count ? parseInt(count, 10) : 0;
+        } catch (error) {
+            console.error('いいね数の取得に失敗しました:', error);
+            return 0;
+        }
+    }
+
+    // いいね数を保存
+    function setLikeCount(count) {
+        try {
+            localStorage.setItem(LIKES_KEY, count.toString());
+        } catch (error) {
+            console.error('いいね数の保存に失敗しました:', error);
+        }
+    }
+
+    // ユーザーがいいね済みかチェック
+    function hasUserLiked() {
+        try {
+            return localStorage.getItem(USER_LIKED_KEY) === 'true';
+        } catch (error) {
+            console.error('いいね状態の取得に失敗しました:', error);
+            return false;
+        }
+    }
+
+    // ユーザーのいいね状態を保存
+    function setUserLiked(liked) {
+        try {
+            localStorage.setItem(USER_LIKED_KEY, liked.toString());
+        } catch (error) {
+            console.error('いいね状態の保存に失敗しました:', error);
+        }
+    }
+
+    // UIを更新
+    function updateUI() {
+        const count = getLikeCount();
+        const userLiked = hasUserLiked();
+
+        likeCount.textContent = count.toString();
+
+        if (userLiked) {
+            // いいね済みの状態（取り消し可能）
+            likeButton.className = 'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300';
+            likeIcon.textContent = '👍';
+            likeText.textContent = 'いいね済み';
+            likeButton.disabled = false;
+            likeButton.title = 'クリックでいいねを取り消し';
+        } else {
+            // いいね可能な状態
+            likeButton.className = 'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700';
+            likeIcon.textContent = '👍';
+            likeText.textContent = 'いいね';
+            likeButton.disabled = false;
+            likeButton.title = 'いいねする';
+        }
+    }
+
+    // メッセージを表示
+    function showMessage(text, type = 'success') {
+        likeMessage.textContent = text;
+        likeMessage.className = `mt-3 text-center text-sm ${
+            type === 'success' ? 'text-green-600' :
+            type === 'error' ? 'text-red-600' :
+            'text-blue-600'
+        }`;
+        likeMessage.style.display = 'block';
+
+        // 3秒後に非表示
+        setTimeout(() => {
+            likeMessage.style.display = 'none';
+        }, 3000);
+    }
+
+    // いいね処理（トグル機能付き）
+    function handleLike() {
+        const currentlyLiked = hasUserLiked();
+        const currentCount = getLikeCount();
+
+        if (currentlyLiked) {
+            // いいねを取り消す
+            const newCount = Math.max(0, currentCount - 1); // 0未満にならないように
+            setLikeCount(newCount);
+            setUserLiked(false);
+
+            // UIを更新
+            updateUI();
+
+            // 取り消しメッセージ
+            showMessage('いいねを取り消しました', 'info');
+
+            // アニメーション効果
+            likeButton.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                likeButton.style.transform = 'scale(1)';
+            }, 200);
+        } else {
+            // いいねする
+            const newCount = currentCount + 1;
+            setLikeCount(newCount);
+            setUserLiked(true);
+
+            // UIを更新
+            updateUI();
+
+            // 成功メッセージ
+            showMessage('いいねしました！ありがとうございます🎉', 'success');
+
+            // アニメーション効果
+            likeButton.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                likeButton.style.transform = 'scale(1)';
+            }, 200);
+        }
+    }
+
+    // イベントリスナーの設定
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初期状態の設定
+        updateUI();
+
+        // いいねボタンのクリックイベント
+        if (likeButton) {
+            likeButton.addEventListener('click', handleLike);
+        }
+    });
+</script>
