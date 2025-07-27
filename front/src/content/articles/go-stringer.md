@@ -9,14 +9,14 @@ draft: false
 
 ## はじめに
 
-ログ出力に機密情報を送りたくないと思ったことはありませんか？
-Go はシンプルな方法で Print 系出力時のマスキングを実現できます。
+出力やログに機密情報を含めたくないと思ったことはありませんか？
+Go はシンプルな方法で文字列出力時のマスキングを実現できます。
 
-本記事では「**Go の Print 系と Stringer を利用したマスキングの方法**」を解説します。
+本記事では「**Go の Stringer インターフェースを利用したマスキングの方法**」を解説します。
 
 ## Go と Stringer インターフェース
 
-`fmt` パッケージの Print 系関数は、値が [`fmt.Stringer`](https://pkg.go.dev/fmt#Stringer) を実装している場合、`String()` メソッドを自動的に呼び出します。
+`fmt`パッケージの関数は、値が[`fmt.Stringer`](https://pkg.go.dev/fmt#Stringer)を実装している場合、`String()`メソッドを自動的に呼び出します。これは`fmt.Print`系だけでなく、`fmt.Sprintf`や`fmt.Errorf`の`%s`、`%v`などでも同様です。
 
 ```go
 type Stringer interface {
@@ -43,13 +43,29 @@ num := CreditCardNumber("4111-1111-1111-1111")
 fmt.Println(num) // ****-****-****-****
 ```
 
+## fmt.Errorf でも同様にマスキング
+
+エラーメッセージでも同じようにマスキングされます：
+
+```go
+num := CreditCardNumber("4111-1111-1111-1111")
+err := fmt.Errorf("処理エラー: %s", num)
+fmt.Println(err) // 処理エラー: ****-****-****-****
+```
+
 ## 構造体に含めた場合
 
 次は構造体のフィールドにその型を含める例です。
 
 ```go
+type CreditCardNumber string
+
+func (c CreditCardNumber) String() string {
+    return "****-****-****-****"
+}
+
 type CreditCard struct {
-    Number   CreditCardNumber // Stringer実装済み
+    Number   CreditCardNumber
     UserName string
 }
 
@@ -62,13 +78,6 @@ fmt.Println(c) // {****-****-****-**** tanaka}
 
 `fmt` は構造体の各フィールドを個別に出力する際、各フィールドが `Stringer` を実装していれば `String()` を呼び出すのでマスキングできます。
 
-## log.Print にも適用
-
-`log.Print` も `fmt` と同じ仕組みなので、同様に `String()` が呼ばれます。
-
-```go
-log.Print(c) // 2025/07/27 12:00:00 {****-****-****-**** tanaka}
-```
 
 ## 構造体自体に String()を実装する方法
 
@@ -84,8 +93,9 @@ fmt.Println(c) // num:****-****-****-****,name:tanaka
 
 ## まとめ
 
-- `fmt` や `log` は `Stringer` を実装した型の `String()` を自動で呼び出す
-- マスキングしたい値を含む型に `String()` を実装するだけで実現可能
-- 構造体自体にも `String()` を実装すると、出力を完全に控えられる
+- `fmt`や`log`は`Stringer`を実装した型の`String()`を自動で呼び出す
+- `Print`系だけでなく、`%s`や`%v`を使う`Sprintf`、`Errorf`でもマスキングされる
+- マスキングしたい値を含む型に`String()`を実装するだけで実現可能
+- 構造体自体にも`String()`を実装すると、出力を完全に制御できる
 
 これで Go でログマスキングを実現する基本はばっちりです。是非使ってみてください！ 🚀
