@@ -61,13 +61,31 @@ const { articleSlug } = Astro.props;
 <script define:vars={{ articleSlug }}>
     // LocalStorageのキー
     const STORAGE_KEY = `comments_${articleSlug}`;
+    const USER_ID_KEY = 'user_id'; // ユーザー識別用
+
+    // ユーザーIDを取得または生成
+    function getUserId() {
+        try {
+            let userId = localStorage.getItem(USER_ID_KEY);
+            if (!userId) {
+                // ランダムなユーザーIDを生成
+                userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem(USER_ID_KEY, userId);
+            }
+            return userId;
+        } catch (error) {
+            console.error('ユーザーIDの取得に失敗しました:', error);
+            return 'anonymous_' + Date.now();
+        }
+    }
 
     // コメントデータの構造
     class Comment {
-        constructor(name, content) {
+        constructor(name, content, userId) {
             this.id = Date.now().toString();
             this.name = name || '匿名';
             this.content = content;
+            this.userId = userId; // 投稿者のユーザーID
             this.timestamp = new Date().toISOString();
         }
     }
@@ -97,6 +115,7 @@ const { articleSlug } = Astro.props;
         const comments = getComments();
         const commentsList = document.getElementById('comments-list');
         const noCommentsMsg = document.getElementById('no-comments');
+        const currentUserId = getUserId();
 
         if (comments.length === 0) {
             commentsList.innerHTML = '';
@@ -114,31 +133,92 @@ const { articleSlug } = Astro.props;
                 hour: '2-digit',
                 minute: '2-digit'
             });
+            
+            // 編集時刻の表示
+            const editedText = comment.lastEdited ? 
+                ` (${new Date(comment.lastEdited).toLocaleDateString('ja-JP', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })}に編集)` : '';
+
+            // 投稿者のみ削除・編集ボタンを表示
+            const canDelete = comment.userId === currentUserId;
+            const actionButtons = canDelete ? `
+                <button 
+                    class="edit-comment-btn text-blue-500 hover:text-blue-700 text-xs px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                    data-comment-id="${comment.id}"
+                    title="コメントを編集"
+                >
+                    編集
+                </button>
+                <button 
+                    class="delete-comment-btn text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                    data-comment-id="${comment.id}"
+                    title="コメントを削除"
+                >
+                    削除
+                </button>
+            ` : '';
 
             return `
                 <div class="bg-gray-50 p-4 rounded-lg border border-gray-200" data-comment-id="${comment.id}">
                     <div class="flex justify-between items-start mb-2">
                         <h4 class="font-medium text-gray-800">${escapeHtml(comment.name)}</h4>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-500">${date}</span>
+                            <span class="text-xs text-gray-500">${date}${editedText}</span>
+                            ${actionButtons}
+                        </div>
+                    </div>
+                    <div class="comment-content">
+                        <p class="text-gray-700 whitespace-pre-wrap">${escapeHtml(comment.content)}</p>
+                    </div>
+                    <div class="edit-form" style="display: none;">
+                        <textarea 
+                            class="edit-textarea w-full p-2 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            rows="3"
+                            placeholder="コメントを編集..."
+                        >${escapeHtml(comment.content)}</textarea>
+                        <div class="flex gap-2 mt-2">
                             <button 
-                                class="delete-comment-btn text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                                class="save-edit-btn bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition-colors"
                                 data-comment-id="${comment.id}"
-                                title="コメントを削除"
                             >
-                                削除
+                                保存
+                            </button>
+                            <button 
+                                class="cancel-edit-btn bg-gray-500 text-white px-3 py-1 rounded text-xs hover:bg-gray-600 transition-colors"
+                                data-comment-id="${comment.id}"
+                            >
+                                キャンセル
                             </button>
                         </div>
                     </div>
-                    <p class="text-gray-700 whitespace-pre-wrap">${escapeHtml(comment.content)}</p>
                 </div>
             `;
         }).join('');
         
-        // 削除ボタンのイベントリスナーを追加
+        // 削除・編集ボタンのイベントリスナーを追加
         const deleteButtons = commentsList.querySelectorAll('.delete-comment-btn');
+        const editButtons = commentsList.querySelectorAll('.edit-comment-btn');
+        const saveButtons = commentsList.querySelectorAll('.save-edit-btn');
+        const cancelButtons = commentsList.querySelectorAll('.cancel-edit-btn');
+        
         deleteButtons.forEach(button => {
             button.addEventListener('click', deleteComment);
+        });
+        
+        editButtons.forEach(button => {
+            button.addEventListener('click', startEdit);
+        });
+        
+        saveButtons.forEach(button => {
+            button.addEventListener('click', saveEdit);
+        });
+        
+        cancelButtons.forEach(button => {
+            button.addEventListener('click', cancelEdit);
         });
     }
 
@@ -147,6 +227,79 @@ const { articleSlug } = Astro.props;
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // 編集開始処理
+    function startEdit(event) {
+        const commentId = event.target.getAttribute('data-comment-id');
+        const commentDiv = document.querySelector(`[data-comment-id="${commentId}"]`);
+        
+        // コンテンツ表示を隠して編集フォームを表示
+        const contentDiv = commentDiv.querySelector('.comment-content');
+        const editForm = commentDiv.querySelector('.edit-form');
+        
+        contentDiv.style.display = 'none';
+        editForm.style.display = 'block';
+        
+        // テキストエリアにフォーカス
+        const textarea = editForm.querySelector('.edit-textarea');
+        textarea.focus();
+        // カーソルを最後に移動
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+
+    // 編集保存処理
+    function saveEdit(event) {
+        const commentId = event.target.getAttribute('data-comment-id');
+        const commentDiv = document.querySelector(`[data-comment-id="${commentId}"]`);
+        const textarea = commentDiv.querySelector('.edit-textarea');
+        const newContent = textarea.value.trim();
+        
+        if (!newContent) {
+            alert('コメント内容を入力してください。');
+            return;
+        }
+        
+        // コメントを取得
+        let comments = getComments();
+        
+        // 指定されたIDのコメントを更新
+        const commentIndex = comments.findIndex(comment => comment.id === commentId);
+        if (commentIndex !== -1) {
+            comments[commentIndex].content = newContent;
+            // 編集時刻を更新（オプション）
+            comments[commentIndex].lastEdited = new Date().toISOString();
+        }
+        
+        // 保存
+        saveComments(comments);
+        
+        // 表示を更新
+        renderComments();
+        
+        // 編集完了メッセージ
+        showMessage('コメントが更新されました', 'success');
+    }
+
+    // 編集キャンセル処理
+    function cancelEdit(event) {
+        const commentId = event.target.getAttribute('data-comment-id');
+        const commentDiv = document.querySelector(`[data-comment-id="${commentId}"]`);
+        
+        // 編集フォームを隠してコンテンツ表示に戻す
+        const contentDiv = commentDiv.querySelector('.comment-content');
+        const editForm = commentDiv.querySelector('.edit-form');
+        
+        editForm.style.display = 'none';
+        contentDiv.style.display = 'block';
+        
+        // テキストエリアの内容を元に戻す
+        const textarea = editForm.querySelector('.edit-textarea');
+        const comments = getComments();
+        const comment = comments.find(c => c.id === commentId);
+        if (comment) {
+            textarea.value = comment.content;
+        }
     }
 
     // コメント削除処理
@@ -214,8 +367,9 @@ const { articleSlug } = Astro.props;
             return;
         }
 
+        const userId = getUserId(); // ユーザーIDを取得
         // 新しいコメントを作成
-        const newComment = new Comment(name, content);
+        const newComment = new Comment(name, content, userId);
         
         // 既存のコメントに追加
         const comments = getComments();

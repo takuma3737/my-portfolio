@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Comments from '../../components/Comments.astro';
+import LikeButton from '../../components/LikeButton.astro';
 import { getCollection, getEntry } from 'astro:content';
 
 // 静的パス生成のためのgetStaticPaths関数
@@ -50,6 +51,9 @@ const post = {
                 <Content />
             </div>
         </article>
+        
+        <!-- いいねボタンを追加 -->
+        <LikeButton articleSlug={article.slug} />
         
         <!-- コメント機能を追加 -->
         <Comments articleSlug={article.slug} />
