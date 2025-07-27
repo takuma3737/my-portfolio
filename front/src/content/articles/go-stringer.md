@@ -94,7 +94,7 @@ fmt.Println(c) // num:****-****-****-****,name:tanaka
 ## まとめ
 
 - `fmt`や`log`は`Stringer`を実装した型の`String()`を自動で呼び出す
-- `Print`系だけでなく、`%s`や`%v`を使う`Sprintf`、`Errorf`でもマスキングされる
+- `Print*`系だけでなく、`%s`や`%v`を使う`Sprintf`、`Errorf`でもマスキングされる
 - マスキングしたい値を含む型に`String()`を実装するだけで実現可能
 - 構造体自体にも`String()`を実装すると、出力を完全に制御できる
 

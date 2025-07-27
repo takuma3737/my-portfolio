@@ -1,0 +1,258 @@
+---
+interface Props {
+    articleSlug: string;
+}
+
+const { articleSlug } = Astro.props;
+---
+
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/50 mt-8">
+    <h3 class="font-bold text-lg mb-6 border-l-4 border-green-600 pl-3">コメント</h3>
+    
+    <!-- コメント投稿フォーム -->
+    <div class="mb-8">
+        <form id="comment-form" class="space-y-4">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700 mb-2">名前（任意）</label>
+                <input 
+                    type="text" 
+                    id="name" 
+                    name="name" 
+                    placeholder="匿名" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+            </div>
+            <div>
+                <label for="comment" class="block text-sm font-medium text-gray-700 mb-2">コメント</label>
+                <textarea 
+                    id="comment" 
+                    name="comment" 
+                    rows="4" 
+                    placeholder="コメントを入力してください..." 
+                    required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                ></textarea>
+            </div>
+            <button 
+                type="submit" 
+                class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors duration-200 font-medium"
+            >
+                コメントを投稿
+            </button>
+        </form>
+    </div>
+
+    <!-- コメント一覧 -->
+    <div class="mb-4">
+        <div class="flex justify-between items-center mb-4">
+            <h4 class="text-md font-medium text-gray-700">投稿されたコメント</h4>
+        </div>
+        <div id="comments-list" class="space-y-4">
+            <!-- コメントがここに表示される -->
+        </div>
+    </div>
+
+    <!-- コメントがない場合のメッセージ -->
+    <div id="no-comments" class="text-gray-500 text-center py-8">
+        まだコメントがありません。最初のコメントを投稿してみませんか？
+    </div>
+</div>
+
+<script define:vars={{ articleSlug }}>
+    // LocalStorageのキー
+    const STORAGE_KEY = `comments_${articleSlug}`;
+
+    // コメントデータの構造
+    class Comment {
+        constructor(name, content) {
+            this.id = Date.now().toString();
+            this.name = name || '匿名';
+            this.content = content;
+            this.timestamp = new Date().toISOString();
+        }
+    }
+
+    // LocalStorageからコメントを取得
+    function getComments() {
+        try {
+            const comments = localStorage.getItem(STORAGE_KEY);
+            return comments ? JSON.parse(comments) : [];
+        } catch (error) {
+            console.error('コメントの取得に失敗しました:', error);
+            return [];
+        }
+    }
+
+    // LocalStorageにコメントを保存
+    function saveComments(comments) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+        } catch (error) {
+            console.error('コメントの保存に失敗しました:', error);
+        }
+    }
+
+    // コメントを表示
+    function renderComments() {
+        const comments = getComments();
+        const commentsList = document.getElementById('comments-list');
+        const noCommentsMsg = document.getElementById('no-comments');
+
+        if (comments.length === 0) {
+            commentsList.innerHTML = '';
+            noCommentsMsg.style.display = 'block';
+            return;
+        }
+
+        noCommentsMsg.style.display = 'none';
+        
+        commentsList.innerHTML = comments.map(comment => {
+            const date = new Date(comment.timestamp).toLocaleDateString('ja-JP', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            return `
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200" data-comment-id="${comment.id}">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-medium text-gray-800">${escapeHtml(comment.name)}</h4>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500">${date}</span>
+                            <button 
+                                class="delete-comment-btn text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                                data-comment-id="${comment.id}"
+                                title="コメントを削除"
+                            >
+                                削除
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 whitespace-pre-wrap">${escapeHtml(comment.content)}</p>
+                </div>
+            `;
+        }).join('');
+        
+        // 削除ボタンのイベントリスナーを追加
+        const deleteButtons = commentsList.querySelectorAll('.delete-comment-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', deleteComment);
+        });
+    }
+
+    // HTMLエスケープ関数
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // コメント削除処理
+    function deleteComment(event) {
+        const commentId = event.target.getAttribute('data-comment-id');
+        
+        // 確認ダイアログを表示
+        if (!confirm('このコメントを削除しますか？この操作は取り消せません。')) {
+            return;
+        }
+        
+        // コメントを取得
+        let comments = getComments();
+        
+        // 指定されたIDのコメントを削除
+        comments = comments.filter(comment => comment.id !== commentId);
+        
+        // 保存
+        saveComments(comments);
+        
+        // 表示を更新
+        renderComments();
+        
+        // 削除完了メッセージ
+        showMessage('コメントが削除されました', 'success');
+    }
+
+    // メッセージ表示関数
+    function showMessage(text, type = 'info') {
+        // 既存のメッセージがあれば削除
+        const existingMessage = document.querySelector('.temp-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        
+        // メッセージ要素を作成
+        const message = document.createElement('div');
+        message.className = `temp-message p-3 rounded-md mb-4 ${
+            type === 'success' ? 'bg-green-100 text-green-700 border border-green-200' :
+            type === 'error' ? 'bg-red-100 text-red-700 border border-red-200' :
+            'bg-blue-100 text-blue-700 border border-blue-200'
+        }`;
+        message.textContent = text;
+        
+        // コメント欄の上部に挿入
+        const commentsSection = document.querySelector('#comments-list').parentElement;
+        commentsSection.insertBefore(message, document.querySelector('#comments-list'));
+        
+        // 3秒後に自動で削除
+        setTimeout(() => {
+            message.remove();
+        }, 3000);
+    }
+
+    // コメント投稿処理
+    function submitComment(event) {
+        event.preventDefault();
+        
+        const form = event.target;
+        const name = form.name.value.trim();
+        const content = form.comment.value.trim();
+
+        if (!content) {
+            alert('コメントを入力してください。');
+            return;
+        }
+
+        // 新しいコメントを作成
+        const newComment = new Comment(name, content);
+        
+        // 既存のコメントに追加
+        const comments = getComments();
+        comments.push(newComment);
+        
+        // 保存
+        saveComments(comments);
+        
+        // 表示を更新
+        renderComments();
+        
+        // フォームをリセット
+        form.reset();
+        
+        // 成功メッセージ
+        showMessage('コメントが投稿されました！', 'success');
+        
+        const button = form.querySelector('button[type="submit"]');
+        const originalText = button.textContent;
+        button.textContent = '投稿完了！';
+        button.disabled = true;
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.disabled = false;
+        }, 2000);
+    }
+
+    // イベントリスナーの設定
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初期表示
+        renderComments();
+        
+        // フォーム送信イベント
+        const form = document.getElementById('comment-form');
+        if (form) {
+            form.addEventListener('submit', submitComment);
+        }
+    });
+</script>
