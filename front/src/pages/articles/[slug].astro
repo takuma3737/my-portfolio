@@ -32,22 +32,39 @@ const post = {
 ---
 
 <Layout title={`${post.title} - My Tech Journey`}>
-<main class="container mx-auto px-6 py-12">
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+<main class="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
 
-    <div class="lg:col-span-2 bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-gray-200/50">
+    <div class="lg:col-span-2 bg-white p-4 sm:p-8 md:p-12 rounded-2xl shadow-sm border border-gray-200/50">
         <article class="prose max-w-none">
             <header>
-                <div class="text-4xl mb-4">{post.emoji}</div>
-                <h1 class="text-3xl md:text-4xl font-bold !mb-2">{post.title}</h1>
-                <div class="flex items-center gap-4 text-sm text-gray-500">
+                <div class="text-3xl sm:text-4xl mb-3 sm:mb-4">{post.emoji}</div>
+                <h1 class="text-xl sm:text-3xl md:text-4xl font-bold !mb-2 leading-tight">{post.title}</h1>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500">
                     <time datetime={post.date}>{post.date}</time>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         {post.tags.map(tag => <span class="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{tag}</span>)}
                     </div>
                 </div>
             </header>
-            <div class="mt-8 prose prose-gray max-w-none">
+            
+            <!-- モバイル用目次（lg画面以下で表示） -->
+            <div class="lg:hidden mt-6 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <h3 class="font-bold text-sm mb-3 border-l-4 border-green-600 pl-3">目次</h3>
+                <ul id="toc-mobile" class="space-y-1.5 text-xs">
+                    {headings.filter(heading => heading.depth >= 2).map(heading => (
+                        <li class:list={[
+                            {'pl-3': heading.depth === 3},
+                            {'pl-6': heading.depth === 4},
+                            {'pl-9': heading.depth === 5}
+                        ]}>
+                            <a href={`#${heading.slug}`} class="toc-link block text-gray-900 hover:text-gray-700 transition-all duration-300 leading-relaxed">{heading.text}</a>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+            
+            <div class="mt-6 sm:mt-8 prose prose-gray max-w-none prose-sm sm:prose-base">
                 <Content />
             </div>
         </article>
@@ -59,18 +76,19 @@ const post = {
         <Comments articleSlug={article.slug} />
     </div>
 
-    <aside class="lg:col-span-1">
-        <div class="sticky top-24">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/50">
-                <h3 class="font-bold text-lg mb-4 border-l-4 border-accent-green pl-3">目次</h3>
-                <ul id="toc" class="space-y-2 text-sm">
+    <!-- デスクトップ用目次（lg画面以上で表示） -->
+    <aside class="hidden lg:block lg:col-span-1">
+        <div class="sticky top-20 sm:top-24">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/50">
+                <h3 class="font-bold text-base sm:text-lg mb-3 sm:mb-4 border-l-4 border-green-600 pl-3">目次</h3>
+                <ul id="toc" class="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                     {headings.filter(heading => heading.depth >= 2).map(heading => (
                         <li class:list={[
-                            {'pl-4': heading.depth === 3},
-                            {'pl-8': heading.depth === 4},
-                            {'pl-12': heading.depth === 5}
+                            {'pl-3 sm:pl-4': heading.depth === 3},
+                            {'pl-6 sm:pl-8': heading.depth === 4},
+                            {'pl-9 sm:pl-12': heading.depth === 5}
                         ]}>
-                            <a href={`#${heading.slug}`} class="toc-link block text-gray-600 hover:text-green-600 transition-all duration-300">{heading.text}</a>
+                            <a href={`#${heading.slug}`} class="toc-link block text-gray-900 hover:text-gray-700 transition-all duration-300 leading-relaxed">{heading.text}</a>
                         </li>
                     ))}
                 </ul>
@@ -90,43 +108,77 @@ const post = {
 
     function updateTableOfContents() {
         const tocContainer = document.getElementById('toc');
-        if (!tocContainer) return;
-
-        // 既存の目次をクリア
-        tocContainer.innerHTML = '';
-
-        // h2以下の見出しを取得（h1はタイトルなので除外）
+        const tocMobileContainer = document.getElementById('toc-mobile');
+        
+        // h2以下の見出しを取得（h1はタイトルなので除外、「目次」も除外）
         const allHeadings = document.querySelectorAll('.prose h2, .prose h3, .prose h4, .prose h5, .color-block h2, .color-block h3, .color-block h4, .color-block h5');
         
-        allHeadings.forEach((heading, index) => {
-            const tagName = heading.tagName.toLowerCase();
-            const depth = parseInt(tagName.charAt(1));
+        // 「目次」という見出しを除外
+        const filteredHeadings = Array.from(allHeadings).filter(heading => {
+            const text = heading.textContent?.trim() || '';
+            return text !== '目次';
+        });
+        
+        // デスクトップ版とモバイル版の両方を更新
+        [tocContainer, tocMobileContainer].forEach((container, containerIndex) => {
+            if (!container) return;
             
-            // 見出しにIDがない場合は生成
-            if (!heading.id) {
-                const text = heading.textContent || '';
-                const id = text.toLowerCase()
-                    .replace(/[^\w\s-]/g, '') // 特殊文字を削除
-                    .replace(/\s+/g, '-')     // スペースをハイフンに
-                    .trim();
-                heading.id = id || `heading-${index}`;
-            }
+            // 既存の目次をクリア
+            container.innerHTML = '';
+            
+            filteredHeadings.forEach((heading, index) => {
+                const tagName = heading.tagName.toLowerCase();
+                const depth = parseInt(tagName.charAt(1));
+                
+                // 見出しにIDがない場合は生成
+                if (!heading.id) {
+                    const text = heading.textContent || '';
+                    const id = text.toLowerCase()
+                        .replace(/[^\w\s-]/g, '') // 特殊文字を削除
+                        .replace(/\s+/g, '-')     // スペースをハイフンに
+                        .trim();
+                    heading.id = id || `heading-${index}`;
+                }
 
-            // 目次アイテムを作成
-            const listItem = document.createElement('li');
-            const link = document.createElement('a');
-            
-            // 深度に応じてインデントを設定（h2が基準、h3以下でインデント）
-            if (depth === 3) listItem.classList.add('pl-4');
-            if (depth === 4) listItem.classList.add('pl-8');
-            if (depth === 5) listItem.classList.add('pl-12');
-            
-            link.href = `#${heading.id}`;
-            link.textContent = heading.textContent || '';
-            link.className = 'toc-link block text-gray-600 hover:text-green-600 transition-all duration-300';
-            
-            listItem.appendChild(link);
-            tocContainer.appendChild(listItem);
+                // 目次アイテムを作成
+                const listItem = document.createElement('li');
+                const link = document.createElement('a');
+                
+                // デスクトップ版（container === tocContainer）とモバイル版で異なるクラスを適用
+                if (containerIndex === 0) {
+                    // デスクトップ版（tocContainer）
+                    if (depth === 3) {
+                        listItem.classList.add('pl-3');
+                        listItem.classList.add('sm:pl-4');
+                    }
+                    if (depth === 4) {
+                        listItem.classList.add('pl-6');
+                        listItem.classList.add('sm:pl-8');
+                    }
+                    if (depth === 5) {
+                        listItem.classList.add('pl-9');
+                        listItem.classList.add('sm:pl-12');
+                    }
+                } else {
+                    // モバイル版（tocMobileContainer）
+                    if (depth === 3) {
+                        listItem.classList.add('pl-3');
+                    }
+                    if (depth === 4) {
+                        listItem.classList.add('pl-6');
+                    }
+                    if (depth === 5) {
+                        listItem.classList.add('pl-9');
+                    }
+                }
+                
+                link.href = `#${heading.id}`;
+                link.textContent = heading.textContent || '';
+                link.className = 'toc-link block text-gray-900 hover:text-gray-700 transition-all duration-300 leading-relaxed';
+                
+                listItem.appendChild(link);
+                container.appendChild(listItem);
+            });
         });
     }
 </script>

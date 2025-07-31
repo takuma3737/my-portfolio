@@ -6,25 +6,25 @@ interface Props {
 const { articleSlug } = Astro.props;
 ---
 
-<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200/50 mt-6">
-    <div class="flex items-center justify-between">
-        <h3 class="font-medium text-gray-700">この記事はいかがでしたか？</h3>
-        <div class="flex items-center gap-4">
+<div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-200/50 mt-4 sm:mt-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <h3 class="font-medium text-gray-700 text-sm sm:text-base">この記事はいかがでしたか？</h3>
+        <div class="flex items-center justify-center sm:justify-end">
             <!-- いいねボタン -->
             <button 
                 id="like-button"
-                class="flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105"
+                class="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-all duration-200 hover:scale-105 text-sm sm:text-base"
                 data-article-slug={articleSlug}
             >
-                <span id="like-icon" class="text-xl">👍</span>
+                <span id="like-icon" class="text-lg sm:text-xl">👍</span>
                 <span id="like-text" class="font-medium">いいね</span>
-                <span id="like-count" class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm font-medium">0</span>
+                <span id="like-count" class="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs sm:text-sm font-medium min-w-[1.5rem] text-center">0</span>
             </button>
         </div>
     </div>
     
     <!-- メッセージ表示エリア -->
-    <div id="like-message" class="mt-3 text-center text-sm" style="display: none;"></div>
+    <div id="like-message" class="mt-2 sm:mt-3 text-center text-xs sm:text-sm" style="display: none;"></div>
 </div>
 
 <script define:vars={{ articleSlug }}>
@@ -87,14 +87,14 @@ const { articleSlug } = Astro.props;
 
         if (userLiked) {
             // いいね済みの状態（取り消し可能）
-            likeButton.className = 'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300';
+            likeButton.className = 'flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-all duration-200 hover:scale-105 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 text-sm sm:text-base';
             likeIcon.textContent = '👍';
             likeText.textContent = 'いいね済み';
             likeButton.disabled = false;
             likeButton.title = 'クリックでいいねを取り消し';
         } else {
             // いいね可能な状態
-            likeButton.className = 'flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700';
+            likeButton.className = 'flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-all duration-200 hover:scale-105 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 text-sm sm:text-base';
             likeIcon.textContent = '👍';
             likeText.textContent = 'いいね';
             likeButton.disabled = false;
