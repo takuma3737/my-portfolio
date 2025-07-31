@@ -41,33 +41,46 @@ const { title } = Astro.props;
 	
 	/* 記事本文のスタイル */
 	.prose h1 {
-		@apply text-3xl font-bold mt-8 mb-6 pb-3 border-b-2 border-gray-200;
+		@apply text-3xl font-bold mt-6 mb-4 pb-3 border-b-2 border-gray-200;
 	}
 	.prose h2 {
-		@apply text-2xl font-bold mt-10 mb-4 pb-2 border-b border-gray-300;
+		@apply text-2xl font-bold mt-8 mb-3 pb-2 border-b border-gray-300;
 	}
 	.prose h3 {
-		@apply text-xl font-bold mt-8 mb-3;
+		@apply text-xl font-bold mt-6 mb-2;
 	}
 	.prose h4 {
-		@apply text-lg font-semibold mt-6 mb-2;
+		@apply text-lg font-semibold mt-4 mb-2;
 	}
 	.prose p {
-		@apply mb-5 leading-relaxed;
+		@apply mb-4 leading-relaxed;
+	}
+	/* 空の段落や改行の間隔を調整 */
+	.prose p:empty {
+		@apply mb-2;
+	}
+	.prose br {
+		line-height: 0.5;
 	}
 	.prose a {
 		@apply text-green-600 underline hover:text-green-700;
 	}
 	.prose ul {
-		@apply list-disc pl-6 mb-5;
+		@apply list-disc pl-6 mb-4 space-y-1;
+	}
+	.prose ol {
+		@apply list-decimal pl-6 mb-4 space-y-1;
+	}
+	.prose li {
+		@apply leading-relaxed;
 	}
 	.prose blockquote {
-		@apply border-l-4 border-green-600 pl-4 my-6 italic text-gray-600;
+		@apply border-l-4 border-green-600 pl-4 my-4 italic text-gray-600;
 	}
 	
 	/* 会話風コードブロックのスタイル */
 	.conversation-code {
-		@apply bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6;
+		@apply bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4;
 	}
 	.conversation-code .speaker {
 		@apply text-sm font-semibold text-gray-700 mb-2 border-b border-gray-200 pb-2;
@@ -87,7 +100,7 @@ const { title } = Astro.props;
 	
 	/* 標準のコードブロックのスタイル改善 */
 	.prose pre {
-		@apply bg-gray-900 text-white text-sm rounded-lg p-4 overflow-x-auto mb-6;
+		@apply bg-gray-900 text-white text-sm rounded-lg p-4 overflow-x-auto mb-4;
 	}
 	.prose code {
 		@apply bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm;
@@ -96,9 +109,14 @@ const { title } = Astro.props;
 		@apply bg-transparent text-white p-0;
 	}
 	
+	/* 強調テキストのスタイル */
+	.prose strong {
+		@apply font-bold text-gray-900;
+	}
+	
 	/* 会話風の質問・回答スタイル */
 	.qa-block {
-		@apply bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6;
+		@apply bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4;
 	}
 	.qa-block .question {
 		@apply text-sm font-semibold text-blue-700 mb-2;
