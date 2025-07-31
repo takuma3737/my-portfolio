@@ -41,19 +41,24 @@ const { title } = Astro.props;
 	
 	/* 記事本文のスタイル */
 	.prose h1 {
-		@apply text-3xl font-bold mt-6 mb-4 pb-3 border-b-2 border-gray-200;
+		@apply text-3xl font-bold mb-4 pb-3 border-b-2 border-gray-200;
+		margin-top: 2rem; /* mt-8 相当 */
 	}
 	.prose h2 {
-		@apply text-2xl font-bold mt-8 mb-3 pb-2 border-b border-gray-300;
+		@apply text-2xl font-bold mb-3 pb-2 border-b border-gray-300;
+		margin-top: 2.5rem; /* mt-10 相当 */
 	}
 	.prose h3 {
-		@apply text-xl font-bold mt-6 mb-2;
+		@apply text-xl font-bold mb-2;
+		margin-top: 2rem; /* mt-8 相当 */
 	}
 	.prose h4 {
-		@apply text-lg font-semibold mt-4 mb-2;
+		@apply text-lg font-semibold mb-2;
+		margin-top: 1.5rem; /* mt-6 相当 */
 	}
 	.prose p {
-		@apply mb-4 leading-relaxed;
+		@apply mb-4;
+		line-height: 2.0; /* leading-relaxed (1.625) から 1.8 に変更 */
 	}
 	/* 空の段落や改行の間隔を調整 */
 	.prose p:empty {
@@ -74,8 +79,78 @@ const { title } = Astro.props;
 	.prose li {
 		@apply leading-relaxed;
 	}
+	
+	/* 通常の引用ブロック */
 	.prose blockquote {
-		@apply border-l-4 border-green-600 pl-4 my-4 italic text-gray-600;
+		@apply border-l-4 border-gray-400 pl-4 my-4 text-gray-600;
+		font-style: normal; /* 斜体を無効化 */
+		line-height: 1.8;
+	}
+	
+	/* |記法による色付きブロック */
+	.color-block {
+		@apply rounded-lg border-l-4 text-gray-900 my-4;
+		font-style: normal;
+		line-height: 1.5;
+		padding: 0.75rem 1rem; /* py-3 px-4 相当に調整 */
+		display: flex;
+		align-items: center;
+		min-height: 2.5rem; /* 文字サイズの約1.5倍の高さ */
+	}
+	
+	/* 各色のバリエーション */
+	.color-block.green {
+		@apply bg-green-50 border-green-400;
+	}
+	
+	.color-block.blue {
+		@apply bg-blue-50 border-blue-400;
+	}
+	
+	.color-block.yellow {
+		@apply bg-yellow-50 border-yellow-400;
+	}
+	
+	.color-block.red {
+		@apply bg-red-50 border-red-400;
+	}
+	
+	.color-block.purple {
+		@apply bg-purple-50 border-purple-400;
+	}
+	
+	.color-block.orange {
+		@apply bg-orange-50 border-orange-400;
+	}
+	
+	.color-block.gray {
+		@apply bg-gray-50 border-gray-400;
+	}
+	
+	.color-block.pink {
+		@apply bg-pink-50 border-pink-400;
+	}
+	
+	.color-block.indigo {
+		@apply bg-indigo-50 border-indigo-400;
+	}
+	
+	.color-block.teal {
+		@apply bg-teal-50 border-teal-400;
+	}
+	
+	/* 色付きブロック内の見出しスタイル調整 */
+	.color-block h1,
+	.color-block h2,
+	.color-block h3 {
+		margin: 0;
+		line-height: 1.4;
+	}
+	
+	/* 見出しを含む色付きブロック用のクラス */
+	.color-block.has-heading {
+		display: block;
+		padding: 0.75rem 1rem;
 	}
 	
 	/* 会話風コードブロックのスタイル */
@@ -132,3 +207,55 @@ const { title } = Astro.props;
 		@apply text-yellow-500;
 	}
 </style>
+
+<script>
+	// |記法による色付きブロックを処理
+	document.addEventListener('DOMContentLoaded', function() {
+		// |記法のパターンを検索して置換
+		const proseParagraphs = document.querySelectorAll('.prose p');
+		
+		proseParagraphs.forEach(p => {
+			const text = p.textContent?.trim() || '';
+			
+			// |color: で始まるパターンをチェック
+			const colorMatch = text.match(/^\|(\w+):\s*(.*)$/s);
+			if (colorMatch && p.parentNode) {
+				const [, color, content] = colorMatch;
+				
+				// 新しいdiv要素を作成
+				const colorBlock = document.createElement('div');
+				colorBlock.className = `color-block ${color.toLowerCase()}`;
+				
+				// Markdownの見出し記法を処理
+				let processedContent = content;
+				
+				// 見出し処理（長いものから順に、マルチラインフラグ使用）
+				processedContent = processedContent.replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold mb-2 mt-0">$1</h3>');
+				processedContent = processedContent.replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold mb-3 mt-0">$1</h2>');
+				processedContent = processedContent.replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mb-4 mt-0">$1</h1>');
+				
+				// 太字処理
+				processedContent = processedContent.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold">$1</strong>');
+				
+				// インラインコード処理
+				processedContent = processedContent.replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm">$1</code>');
+				
+				// 斜体処理（太字とコードの処理後）
+				processedContent = processedContent.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>');
+				
+				// 改行をHTMLの改行に変換
+				processedContent = processedContent.replace(/\n/g, '<br>');
+				
+				colorBlock.innerHTML = processedContent;
+				
+				// 見出しが含まれている場合は専用クラスを追加
+				if (/<h[1-3]/.test(processedContent)) {
+					colorBlock.classList.add('has-heading');
+				}
+				
+				// 元の段落を置換
+				p.parentNode.replaceChild(colorBlock, p);
+			}
+		});
+	});
+</script>
