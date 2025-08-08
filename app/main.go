@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading .env file: %v\n", err)
 		os.Exit(1)
-	}
+	} 
 
 	connString := os.Getenv("DATABASE_URL")
 
