@@ -16,7 +16,7 @@
 │ - 記事表示      │    │ - コメントAPI   │    │ - comments      │
 │ - コメント投稿  │    │ - いいねAPI     │    │ - likes         │
 │ - いいねボタン  │    │ - 管理者API     │    │                 │
-│ - ローカル状態  │    │ - JWT認証       │    │                 │
+│ - ローカル状態  │    │ - 署名Cookie認証 │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -27,9 +27,9 @@
 - **API 定義**: OpenAPI 3.0 + oapi-codegen
 - **Database**: Neon (Serverless PostgreSQL)
 - **Query Builder**: sqlc (型安全な SQL 生成)
-- **Authentication**: JWT (署名付きトークン)
+- **Authentication**: 署名 Cookie (HMAC-SHA256)
 - **Deployment**: Vercel (Frontend) + Railway/Render (Backend)
-- **State Management**: LocalStorage (いいね状態・JWT)
+- **State Management**: LocalStorage (いいね状態) + Cookie (認証)
 
 ## Project Structure
 
@@ -87,16 +87,16 @@ front/
 
 ## API Endpoints
 
-JWT 認証と Upsert 操作に対応したエンドポイント：
+署名 Cookie 認証と Upsert 操作に対応したエンドポイント：
 
 ```
-POST   /api/auth/token                   - JWTトークン発行
+POST   /api/auth/session                 - 署名Cookie発行（初回アクセス時）
 GET    /api/articles/{slug}/comments     - コメント一覧取得
-POST   /api/articles/{slug}/comments     - コメント投稿（JWT必須）
-PUT    /api/comments/{id}                - コメント編集（JWT必須）
-DELETE /api/comments/{id}                - コメント削除（JWT必須）
+POST   /api/articles/{slug}/comments     - コメント投稿（Cookie必須）
+PUT    /api/comments/{id}                - コメント編集（Cookie必須）
+DELETE /api/comments/{id}                - コメント削除（Cookie必須）
 GET    /api/articles/{slug}/likes        - いいね数取得
-POST   /api/articles/{slug}/likes/toggle - いいねトグル（JWT必須）
+POST   /api/articles/{slug}/likes/toggle - いいねトグル（Cookie必須）
 GET    /api/admin/comments               - 全コメント一覧（管理者のみ）
 DELETE /api/admin/comments/{id}          - コメント削除（管理者のみ）
 ```
@@ -114,7 +114,7 @@ CREATE TABLE comments (
     author_name VARCHAR(50) DEFAULT '匿名',
     content TEXT NOT NULL,
     ip_address INET,
-    user_identifier VARCHAR(255) NOT NULL, -- JWT内のユーザーID
+    user_identifier VARCHAR(255) NOT NULL, -- 署名Cookie内のユーザーID
     created_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'UTC'),
     updated_at TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'UTC'),
     deleted_at TIMESTAMP NULL
@@ -157,48 +157,86 @@ type Like struct {
 
 ## User Identification Strategy
 
-匿名利用でもセキュリティを確保するため、署名付き JWT を使用：
+匿名利用でもセキュリティを確保するため、署名付き Cookie を使用：
 
-1. **初回アクセス**: サーバーが署名付き JWT トークンを発行
-2. **フロントエンド**: JWT をローカルストレージに保存
-3. **API 呼び出し**: JWT を Authorization ヘッダーで送信
-4. **バックエンド**: JWT 署名を検証してユーザー ID を取得
+1. **初回アクセス**: サーバーがランダム UID を生成し、HMAC 署名付き Cookie を発行
+2. **フロントエンド**: Cookie は自動的にブラウザで管理（HttpOnly, Secure, SameSite 設定）
+3. **API 呼び出し**: Cookie は自動的に送信される
+4. **バックエンド**: Cookie 署名を検証してユーザー ID を取得
 
 ```go
-// JWT発行（バックエンド）
-func GenerateUserToken() (string, error) {
-    userID := uuid.New().String()
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-        "user_id": userID,
-        "exp":     time.Now().Add(time.Hour * 24 * 365).Unix(), // 1年有効
-    })
-    return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+// 署名Cookie発行（バックエンド）
+func GenerateUserSession(w http.ResponseWriter) (string, error) {
+    userID := generateRandomUID() // crypto/randでランダムUID生成
+
+    // HMAC署名生成
+    h := hmac.New(sha256.New, []byte(os.Getenv("COOKIE_SECRET")))
+    h.Write([]byte(userID))
+    signature := hex.EncodeToString(h.Sum(nil))
+
+    cookieValue := userID + "." + signature
+
+    cookie := &http.Cookie{
+        Name:     "user_session",
+        Value:    cookieValue,
+        MaxAge:   30 * 24 * 60 * 60, // 30日
+        HttpOnly: true,
+        Secure:   true,
+        SameSite: http.SameSiteStrictMode,
+        Path:     "/",
+    }
+    http.SetCookie(w, cookie)
+
+    return userID, nil
 }
 
-// JWT検証
-func ValidateUserToken(tokenString string) (string, error) {
-    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-        return []byte(os.Getenv("JWT_SECRET")), nil
-    })
-    if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-        return claims["user_id"].(string), nil
+// Cookie検証
+func ValidateUserSession(r *http.Request) (string, error) {
+    cookie, err := r.Cookie("user_session")
+    if err != nil {
+        return "", err
     }
-    return "", err
+
+    parts := strings.Split(cookie.Value, ".")
+    if len(parts) != 2 {
+        return "", errors.New("invalid cookie format")
+    }
+
+    userID, signature := parts[0], parts[1]
+
+    // 署名検証
+    h := hmac.New(sha256.New, []byte(os.Getenv("COOKIE_SECRET")))
+    h.Write([]byte(userID))
+    expectedSignature := hex.EncodeToString(h.Sum(nil))
+
+    if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
+        return "", errors.New("invalid signature")
+    }
+
+    return userID, nil
+}
+
+func generateRandomUID() string {
+    bytes := make([]byte, 16)
+    rand.Read(bytes)
+    return hex.EncodeToString(bytes)
 }
 ```
 
 ```typescript
-// フロントエンドでのトークン管理
-async function getUserToken(): Promise<string> {
-  let token = localStorage.getItem("user_token");
-  if (!token) {
-    // 初回アクセス時にサーバーからトークンを取得
-    const response = await fetch("/api/auth/token", { method: "POST" });
-    const data = await response.json();
-    token = data.token;
-    localStorage.setItem("user_token", token);
+// フロントエンドでのセッション管理（Cookieは自動管理）
+async function ensureUserSession(): Promise<void> {
+  // 初回アクセス時にサーバーからセッションCookieを取得
+  // Cookieが存在しない場合のみAPI呼び出し
+  const response = await fetch("/api/auth/session", {
+    method: "POST",
+    credentials: "include", // Cookieを含める
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create session");
   }
-  return token;
+  // Cookieは自動的に設定される
 }
 ```
 
@@ -350,7 +388,7 @@ export const DateTimeUtils = {
 ```
 記事ページを開く
        ↓
-JWT確認 → ローカルストレージ確認 → いいね状態復元
+セッション確認 → Cookie確認 → いいね状態復元（ローカルストレージ）
        ↓
 API呼び出し → いいね数取得
        ↓
@@ -360,9 +398,9 @@ API呼び出し → いいね数取得
 │ ユーザーがいいねボタンをクリック    │
 └─────────────────────────────────────┘
        ↓
-API: POST /likes/toggle (JWT付き)
+API: POST /likes/toggle (Cookie自動送信)
        ↓
-サーバー: JWT検証 → ユーザーID取得
+サーバー: Cookie署名検証 → ユーザーID取得
        ↓
    未いいね？ ──Yes──→ DB: INSERT
        │                    ↓
@@ -382,13 +420,13 @@ API: POST /likes/toggle (JWT付き)
 ```
 コメント一覧表示
        ↓
-JWT確認 → ユーザーID取得 → 自分のコメント？ ──Yes──→ 編集・削除ボタン表示
+Cookie確認 → ユーザーID取得 → 自分のコメント？ ──Yes──→ 編集・削除ボタン表示
        │                                              ↓
        └──No──→ ボタン非表示                    ボタンクリック
                                                       ↓
-                                              API呼び出し (JWT付き)
+                                              API呼び出し (Cookie自動送信)
                                                       ↓
-                                              サーバー: JWT検証 + 権限チェック
+                                              サーバー: Cookie署名検証 + 権限チェック
                                                       ↓
                                               トランザクション内でDB更新
                                                       ↓
@@ -410,13 +448,13 @@ JWT確認 → ユーザーID取得 → 自分のコメント？ ──Yes──�
 ### Frontend Error Handling
 
 - API 通信エラー時のユーザーフレンドリーなメッセージ表示
-- JWT 期限切れ時の自動再取得
+- Cookie 期限切れ時の自動セッション再作成
 - ローカルストレージアクセスエラーのフォールバック
 - フォームバリデーションエラーの表示
 
 ### Backend Error Handling
 
-- JWT 検証エラーのハンドリング
+- Cookie 署名検証エラーのハンドリング
 - 入力値検証とサニタイゼーション
 - データベース接続エラーのハンドリング
 - レート制限超過時の適切なレスポンス
@@ -438,7 +476,7 @@ JWT確認 → ユーザーID取得 → 自分のコメント？ ──Yes──�
 
 ### Test Cases
 
-1. JWT 認証フロー（発行・検証・期限切れ）
+1. 署名 Cookie 認証フロー（発行・検証・期限切れ）
 2. コメント投稿・編集・削除（権限チェック含む）
 3. いいねボタンの状態変更（Upsert 動作）
 4. ページリロード時の状態復元

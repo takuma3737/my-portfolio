@@ -1,0 +1,439 @@
+openapi: 3.0.3
+info:
+  title: Article Engagement API
+  description: API for article comments and likes functionality
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://izumin-tech.jp
+    description: Production server
+
+paths:
+  /auth/session:
+    post:
+      operationId: createSession
+      summary: 署名付きCookieでユーザーセッションを作成
+      description: 匿名ユーザー識別用の署名付きCookieを発行（30日間有効）
+      responses:
+        "200":
+          description: セッションが正常に作成されました
+          headers:
+            Set-Cookie:
+              description: 署名付きセッションCookie
+              schema:
+                type: string
+                example: "user_session=abc123.def456; Max-Age=2592000; HttpOnly; Secure; SameSite=Strict; Path=/"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /articles/{slug}/comments:
+    get:
+      operationId: getComments
+      summary: 記事のコメント一覧を取得
+      description: 指定された記事のすべてのコメントを取得
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 記事のスラッグ識別子
+      responses:
+        "200":
+          description: コメントが正常に取得されました
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: createComment
+      summary: 新しいコメントを投稿
+      description: 記事に新しいコメントを作成
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 記事のスラッグ識別子
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentRequest"
+      responses:
+        "201":
+          description: コメントが正常に作成されました
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          description: 無効なリクエストデータ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 認証エラー - セッションCookieが無効または不足
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /comments/{id}:
+    put:
+      operationId: updateComment
+      summary: コメントを更新
+      description: 既存のコメントを更新（投稿者のみ可能）
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: コメントID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentUpdateRequest"
+      responses:
+        "200":
+          description: コメントが正常に更新されました
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          description: 無効なリクエストデータ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 認証エラー - セッションCookieが無効または不足
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 権限エラー - コメント投稿者ではありません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: コメントが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteComment
+      summary: コメントを削除
+      description: 既存のコメントを削除（投稿者のみ可能）
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: コメントID
+      responses:
+        "204":
+          description: コメントが正常に削除されました
+        "401":
+          description: 認証エラー - セッションCookieが無効または不足
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 権限エラー - コメント投稿者ではありません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: コメントが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /articles/{slug}/likes:
+    get:
+      operationId: getLikes
+      summary: 記事のいいね数とユーザー状態を取得
+      description: 記事の総いいね数と現在のユーザーがいいねしているかどうかを取得
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 記事のスラッグ識別子
+      responses:
+        "200":
+          description: いいね情報が正常に取得されました
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /articles/{slug}/likes/toggle:
+    post:
+      operationId: toggleLike
+      summary: 記事のいいね状態をトグル
+      description: 記事のいいねを追加または削除（Upsert操作）
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 記事のスラッグ識別子
+      responses:
+        "200":
+          description: いいね状態が正常に切り替えられました
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResponse"
+        "401":
+          description: 認証エラー - セッションCookieが無効または不足
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/comments:
+    get:
+      operationId: getAllComments
+      summary: 全コメントを取得（管理者のみ）
+      description: モデレーション用にすべての記事のコメントを取得
+      security:
+        - CookieAuth: []
+      responses:
+        "200":
+          description: 全コメントが正常に取得されました
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+        "401":
+          description: 認証エラー - セッションCookieが無効または不足
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 権限エラー - 管理者アクセスが必要です
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/comments/{id}:
+    delete:
+      operationId: adminDeleteComment
+      summary: 任意のコメントを削除（管理者のみ）
+      description: モデレーション目的で任意のコメントを削除
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: コメントID
+      responses:
+        "204":
+          description: コメントが正常に削除されました
+        "401":
+          description: 認証エラー - セッションCookieが無効または不足
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: 権限エラー - 管理者アクセスが必要です
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: コメントが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: user-session
+
+  schemas:
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        article-slug:
+          type: string
+        author-name:
+          type: string
+        content:
+          type: string
+        user-identifier:
+          type: string
+        created-at:
+          type: string
+          format: date-time
+        updated-at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - article-slug
+        - author-name
+        - content
+        - user-identifier
+        - created-at
+        - updated-at
+
+    CommentRequest:
+      type: object
+      properties:
+        author-name:
+          type: string
+          default: "匿名"
+        content:
+          type: string
+      required:
+        - content
+
+    CommentUpdateRequest:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    LikeResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        userLiked:
+          type: boolean
+      required:
+        - count
+        - userLiked
+
+    SessionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+        message:
+          type: string
+        code:
+          type: string
+      required:
+        - error
+        - message
