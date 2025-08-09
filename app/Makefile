@@ -53,6 +53,7 @@ setup:
 	@echo "必要なツールをインストール中..."
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 	go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 # データベースマイグレーション（将来的に追加予定）
 migrate-up:
