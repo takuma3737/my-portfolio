@@ -27,3 +27,4 @@ front/.env.production
 
 # jetbrains setting folder
 .idea/
+.github/
