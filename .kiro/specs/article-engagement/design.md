@@ -101,6 +101,16 @@ GET    /api/admin/comments               - 全コメント一覧（管理者の�
 DELETE /api/admin/comments/{id}          - コメント削除（管理者のみ）
 ```
 
+## 権限設計（editable フラグ統合）
+
+- 認可はサーバー側で強制: Cookie セッション → `users.identifier_hash` → `users.id` を解決し、所有者のみ更新/削除を許可。
+- フロントは UI 制御を簡素化するため、コメント一覧の各要素に `editable`(boolean) を付与して返す。
+- 単一エンドポイント: `GET /articles/{slug}/comments` に統合。現在ユーザーと `comment.user_id` が一致する場合 `editable: true`。未ログイン時も必ず `editable: false` を返す。
+
+### レスポンス仕様
+
+- `Comment` に `editable`(boolean, required) を追加し、常に返却する。
+
 ## Data Models
 
 ### Database Schema
@@ -177,7 +187,7 @@ func GenerateUserSession(w http.ResponseWriter) (string, error) {
     cookieValue := userID + "." + signature
 
     cookie := &http.Cookie{
-        Name:     "user_session",
+        Name:     "user-session",
         Value:    cookieValue,
         MaxAge:   30 * 24 * 60 * 60, // 30日
         HttpOnly: true,
@@ -192,7 +202,7 @@ func GenerateUserSession(w http.ResponseWriter) (string, error) {
 
 // Cookie検証
 func ValidateUserSession(r *http.Request) (string, error) {
-    cookie, err := r.Cookie("user_session")
+    cookie, err := r.Cookie("user-session")
     if err != nil {
         return "", err
     }
@@ -482,3 +492,17 @@ Cookie確認 → ユーザーID取得 → 自分のコメント？ ──Yes─�
 4. ページリロード時の状態復元
 5. スパム投稿の検出と拒否
 6. 同時アクセス時のデータ整合性
+
+## メモ: いいね（likes）は認証設計の確定後に実装
+
+- 方針: まず匿名セッション/ユーザー特定（Cookie→DB 解決）を安定させ、その後に「いいね」機能を接続する。
+- 返却仕様（OpenAPI 準拠）:
+  - GET `/articles/{slug}/likes` → `{ count: number, userLiked: boolean }`
+  - POST `/articles/{slug}/likes/toggle` → トグル後の `{ count, userLiked }`
+- DB クエリ（sqlc 想定）:
+  - 集計: `GetArticleLikesWithUserStatus(article_id, user_id)` → `count, user_liked`
+  - トグル: `ToggleArticleLike(article_id, user_id)` → `user_liked, count`
+- 実装要点:
+  - 認可は Cookie ベースでサーバー側強制（FE の identifier は UI 補助のみ）。
+  - `article_likes(article_id, user_id)` に UNIQUE 制約、ON CONFLICT を活用。
+  - 将来は CSRF 対策・レート制限・監査ログを追加検討。

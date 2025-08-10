@@ -10,36 +10,11 @@ servers:
     description: Production server
 
 paths:
-  /auth/session:
-    post:
-      operationId: createSession
-      summary: 署名付きCookieでユーザーセッションを作成
-      description: 匿名ユーザー識別用の署名付きCookieを発行（30日間有効）
-      responses:
-        "200":
-          description: セッションが正常に作成されました
-          headers:
-            Set-Cookie:
-              description: 署名付きセッションCookie
-              schema:
-                type: string
-                example: "user_session=abc123.def456; Max-Age=2592000; HttpOnly; Secure; SameSite=Strict; Path=/"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SessionResponse"
-        "500":
-          description: サーバー内部エラー
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
   /articles/{slug}/comments:
     get:
       operationId: getComments
       summary: 記事のコメント一覧を取得
-      description: 指定された記事のすべてのコメントを取得
+      description: 指定された記事のすべてのコメントを取得。署名付きCookieがある場合はeditableフラグを適切に付与（未所持時はfalse）。
       parameters:
         - name: slug
           in: path
@@ -213,7 +188,7 @@ paths:
     get:
       operationId: getLikes
       summary: 記事のいいね数とユーザー状態を取得
-      description: 記事の総いいね数と現在のユーザーがいいねしているかどうかを取得
+      description: 記事の総いいね数と現在のユーザーがいいねしているかどうかを取得。署名付きCookieがある場合はuserLikedを判定（未所持時はfalse）。
       parameters:
         - name: slug
           in: path
@@ -347,6 +322,77 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /articles:
+    get:
+      operationId: listArticles
+      summary: 記事一覧を取得
+      description: 公開済みの記事メタ情報を取得します。
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+          description: 取得件数の上限
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: 取得オフセット
+      responses:
+        "200":
+          description: 記事一覧が正常に取得されました
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ArticleSummary"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /articles/{slug}:
+    get:
+      operationId: getArticle
+      summary: 記事メタ情報を取得
+      description: 指定されたスラッグに一致する記事のメタ情報を返します。
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 記事のスラッグ識別子
+      responses:
+        "200":
+          description: 記事が正常に取得されました
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Article"
+        "404":
+          description: 記事が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   securitySchemes:
     CookieAuth:
@@ -369,20 +415,16 @@ components:
           type: string
         user-identifier:
           type: string
-        created-at:
-          type: string
-          format: date-time
-        updated-at:
-          type: string
-          format: date-time
+        editable:
+          type: boolean
+          description: 現在ユーザーが編集可能か（未ログイン時は false または未設定）
       required:
         - id
         - article-slug
         - author-name
         - content
         - user-identifier
-        - created-at
-        - updated-at
+        - editable
 
     CommentRequest:
       type: object
@@ -414,17 +456,6 @@ components:
         - count
         - userLiked
 
-    SessionResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        message:
-          type: string
-      required:
-        - success
-        - message
-
     ErrorResponse:
       type: object
       properties:
@@ -437,3 +468,36 @@ components:
       required:
         - error
         - message
+
+    ArticleSummary:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        published-at:
+          type: string
+          format: date-time
+      required:
+        - slug
+        - title
+        - published-at
+
+    Article:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        published-at:
+          type: string
+          format: date-time
+        updated-at:
+          type: string
+          format: date-time
+      required:
+        - slug
+        - title
+        - published-at

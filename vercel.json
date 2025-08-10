@@ -2,5 +2,13 @@
   "buildCommand": "cd front && npm run build",
   "outputDirectory": "front/dist",
   "installCommand": "cd front && npm install",
-  "framework": "astro"
+  "framework": "astro",
+  "rewrites": [
+    { "source": "/articles/(.*)/comments", "destination": "https://backend.example.com/articles/$1/comments" },
+    { "source": "/articles/(.*)/likes", "destination": "https://backend.example.com/articles/$1/likes" },
+    { "source": "/articles/(.*)/likes/toggle", "destination": "https://backend.example.com/articles/$1/likes/toggle" },
+    { "source": "/comments/(.*)", "destination": "https://backend.example.com/comments/$1" },
+    { "source": "/admin/comments", "destination": "https://backend.example.com/admin/comments" },
+    { "source": "/admin/comments/(.*)", "destination": "https://backend.example.com/admin/comments/$1" }
+  ]
 }
