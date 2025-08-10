@@ -13,30 +13,23 @@ func main() {
 	err := godotenv.Load("../.env")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading .env file: %v\n", err)
-		os.Exit(1)
+		return
 	} 
 
 	connString := os.Getenv("DATABASE_URL")
 
 	if connString == "" {
 		fmt.Fprintf(os.Stderr, "DATABASE_URL not set\n")
-		os.Exit(1)
+		return
 	}
 	ctx := context.Background()
 
 	conn, err := pgx.Connect(ctx, connString)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
+		return
 	}
 	defer conn.Close(ctx)
 
 	fmt.Println("Connection established")
-
-	_, err = conn.Exec(ctx,
-		`"CREATE TABLE goods IF NOT EXISTS(
-		id PRIMARY KEY uuid_generate_v4(),
-		
-		);"
-	`)
 }

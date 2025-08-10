@@ -86,6 +86,7 @@
     - いいねトグル機能のビジネスロジックを実装する
     - ユーザーのいいね状態確認のビジネスロジックを実装する
     - _Requirements: 2_
+    - Note: 認証（セッション）実装完了後に着手（5.* が完了してから）
 
 - [ ] 7. Handler 層の実装
 
@@ -108,6 +109,7 @@
     - いいね数取得 API を実装する
     - いいねトグル API を実装する
     - _Requirements: 2_
+    - Note: 認証（セッション）実装完了後に着手（5.* が完了してから）
 
   - [ ] 7.4 AuthHandler の実装
     - 署名 Cookie 発行機能を実装する（初回アクセス時）
@@ -225,3 +227,9 @@
     - パフォーマンスの最適化を行う
     - セキュリティの最終チェックを行う
     - _Requirements: 全要件_
+
+- [ ] 5. 権限統合（editable）
+  - [ ] 5.1 OpenAPI 更新: `Comment` に `editable`(boolean, required) を追加し、`GET /articles/{slug}/comments` は単一エンドポイントで常に `editable` を返却。
+  - [ ] 5.2 oapi-codegen 再生成（`cd app && make generate`）。
+  - [ ] 5.3 ハンドラ実装: 現在ユーザーIDと `comment.user_id` の一致で `editable=true`、未ログイン時は `false` を付与。
+  - [ ] 5.4 FE 実装: `comment.editable` を参照して編集/削除ボタン出し分け。
