@@ -1,7 +1,8 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import Comments from '../../components/Comments.astro';
-import LikeButton from '../../components/LikeButton.astro';
+// コメントといいね機能を一時的に無効化
+// import Comments from '../../components/Comments.astro';
+// import LikeButton from '../../components/LikeButton.astro';
 import { getCollection, getEntry } from 'astro:content';
 
 // 静的パス生成のためのgetStaticPaths関数
@@ -69,11 +70,10 @@ const post = {
             </div>
         </article>
         
-        <!-- いいねボタンを追加 -->
-        <LikeButton articleSlug={article.slug} />
+        <!-- いいねボタンとコメント機能を一時的に無効化 -->
+        <!-- <LikeButton articleSlug={article.slug} /> -->
         
-        <!-- コメント機能を追加 -->
-        <Comments articleSlug={article.slug} />
+        <!-- <Comments articleSlug={article.slug} /> -->
     </div>
 
     <!-- デスクトップ用目次（lg画面以上で表示） -->
