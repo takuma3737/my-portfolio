@@ -1,0 +1,186 @@
+---
+// GitHub API動作テストページ（セキュア版）
+import Layout from "../layouts/Layout.astro";
+
+// 環境変数のデバッグ
+console.log("🔍 環境変数デバッグ:");
+console.log(
+  "GITHUB_TOKEN:",
+  process.env.GITHUB_TOKEN
+    ? `設定済み (${process.env.GITHUB_TOKEN.substring(0, 10)}...)`
+    : "未設定"
+);
+console.log("ZENN_GITHUB_USERNAME:", process.env.ZENN_GITHUB_USERNAME);
+console.log("ZENN_REPO_NAME:", process.env.ZENN_REPO_NAME);
+console.log("NODE_ENV:", process.env.NODE_ENV);
+
+// Zenn API関数をインポート
+const { fetchZennArticlesWithCache } = await import("../lib/zenn-api");
+
+// Zenn記事を取得してテスト
+const zennResult = await fetchZennArticlesWithCache();
+
+// デバッグ用のコンソール出力
+console.log("🔍 Zenn API テスト結果:", {
+  success: zennResult.success,
+  articlesCount: zennResult.data?.length || 0,
+  error: zennResult.error,
+});
+
+// 環境変数の確認
+const envCheck = {
+  githubToken: process.env.GITHUB_TOKEN ? "✅ 設定済み" : "❌ 未設定",
+  username: process.env.ZENN_GITHUB_USERNAME || "❌ 未設定", 
+  repoName: process.env.ZENN_REPO_NAME || "❌ 未設定",
+};
+---
+
+<Layout title="Zenn API テスト">
+  <main class="max-w-4xl mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-6 text-gray-900">
+      🔍 Zenn API 動作テスト
+    </h1>
+
+    <!-- 環境変数の状態 -->
+    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+      <h2 class="text-lg font-semibold mb-4">🛠️ 環境変数の状態</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <div class="font-medium text-gray-600">GitHub Token</div>
+          <div class="font-mono text-sm">{envCheck.githubToken}</div>
+        </div>
+        <div>
+          <div class="font-medium text-gray-600">Username</div>
+          <div class="font-mono text-sm">{envCheck.username}</div>
+        </div>
+        <div>
+          <div class="font-medium text-gray-600">Repository</div>
+          <div class="font-mono text-sm">{envCheck.repoName}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API テスト結果 -->
+    <div class="bg-white border rounded-lg p-6">
+      <h2 class="text-lg font-semibold mb-4">📊 API テスト結果</h2>
+
+      <div class="mb-6">
+        {
+          zennResult.success ? (
+            <div class="space-y-4">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">✅</span>
+                <span class="text-green-700 font-semibold">API接続成功！</span>
+              </div>
+
+              <div class="bg-green-50 p-4 rounded-lg">
+                <div class="text-sm text-green-700">
+                  <strong>取得記事数:</strong> {zennResult.data?.length || 0}件
+                </div>
+                <div class="text-sm text-green-700">
+                  <strong>メッセージ:</strong> {zennResult.message}
+                </div>
+              </div>
+
+              {zennResult.data && zennResult.data.length > 0 && (
+                <div>
+                  <h3 class="font-semibold mb-3">
+                    📄 取得した記事一覧（最新5件）
+                  </h3>
+                  <div class="space-y-3">
+                    {zennResult.data.slice(0, 5).map((article: any, index: number) => (
+                      <div class="bg-gray-50 p-3 rounded border-l-4 border-blue-400">
+                        <div class="font-medium text-gray-900">
+                          {article.title}
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1">
+                          {article.emoji} • 作成: {article.date} • パス:{" "}
+                          {article.path}
+                        </div>
+                        {article.topics && article.topics.length > 0 && (
+                          <div class="flex gap-1 mt-2">
+                            {article.topics.map((topic: string, topicIndex: number) => (
+                              <span
+                                class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded"
+                              >
+                                {topic}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {zennResult.data.length > 5 && (
+                    <div class="text-sm text-gray-500 mt-3">
+                      ... その他 {zennResult.data.length - 5}件の記事
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div class="space-y-4">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">❌</span>
+                <span class="text-red-700 font-semibold">API接続失敗</span>
+              </div>
+
+              <div class="bg-red-50 p-4 rounded-lg">
+                <div class="text-sm text-red-700">
+                  <strong>エラー:</strong> {zennResult.error}
+                </div>
+              </div>
+
+              <div class="bg-yellow-50 p-4 rounded-lg">
+                <h3 class="font-semibold text-yellow-800 mb-2">
+                  🔍 トラブルシューティング
+                </h3>
+                <ul class="text-sm text-yellow-700 space-y-1">
+                  <li>• GitHub Personal Access Tokenが正しく設定されているか確認</li>
+                  <li>• Tokenにリポジトリの読み取り権限があるか確認</li>
+                  <li>• リポジトリ名（zenn-article）が正しいか確認</li>
+                  <li>• articlesディレクトリが存在するか確認</li>
+                  <li>• Tokenの有効期限が切れていないか確認</li>
+                </ul>
+              </div>
+            </div>
+          )
+        }
+      </div>
+
+      <!-- デバッグ情報 -->
+      <div class="border-t pt-4 mt-6">
+        <h3 class="font-semibold mb-3">🔍 詳細デバッグ情報</h3>
+        <div class="bg-gray-50 p-3 rounded font-mono text-xs overflow-x-auto">
+          <pre>{JSON.stringify(zennResult, null, 2)}</pre>
+        </div>
+      </div>
+
+      <!-- リポジトリリンク -->
+      <div class="border-t pt-4 mt-6">
+        <h3 class="font-semibold mb-3">🔗 参照中のリポジトリ</h3>
+        <div class="text-sm">
+          <a
+            href={`https://github.com/${envCheck.username}/${envCheck.repoName}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-blue-600 hover:text-blue-800 underline"
+          >
+            https://github.com/{envCheck.username}/{envCheck.repoName}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ナビゲーション -->
+    <div class="mt-8 text-center">
+      <a
+        href="/"
+        class="inline-block bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+      >
+        ← ホームに戻る
+      </a>
+    </div>
+  </main>
+</Layout>
