@@ -5,6 +5,13 @@ import { getCollection } from 'astro:content';
 // Content Collectionsから記事一覧を取得
 const articles = await getCollection('articles');
 
+// Zenn API関数をインポート
+const { fetchZennArticlesWithCache } = await import('../../lib/zenn-api');
+
+// Zenn記事を取得
+const zennResult = await fetchZennArticlesWithCache();
+const zennArticles = zennResult.success ? zennResult.data : [];
+
 // 公開済みの記事のみを取得し、日付順にソート
 const posts = articles
     .filter(article => !article.data.draft)
@@ -40,7 +47,7 @@ const sortedTags = Object.entries(tagCounts)
 ---
 
 <Layout title="記事一覧 - Takuma.dev">
-	<main class="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <main class="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
             <div class="lg:col-span-2">
                 <header class="mb-6 sm:mb-8">
@@ -48,47 +55,180 @@ const sortedTags = Object.entries(tagCounts)
                     <p class="mt-2 text-sm sm:text-base text-gray-600">技術的なメモや考えをまとめています。</p>
                 </header>
 
-        <div class="grid grid-cols-1 gap-4 sm:gap-6">
-			{posts.map(post => (
-				<a href={post.url} class="block bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
-					<div class="flex items-start gap-3 sm:gap-4">
-						<div class="text-2xl sm:text-4xl flex-shrink-0">{post.emoji}</div>
-						<div class="flex-1 min-w-0">
-							<div class="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
-								{post.tags.slice(0, 2).map(tag => 
-									<span class="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{tag}</span>
-								)}
-								{post.tags.length > 2 && (
-									<span class="text-xs text-gray-500">+{post.tags.length - 2}</span>
-								)}
-							</div>
-							<h3 class="font-bold text-sm sm:text-lg mb-1 sm:mb-2 leading-tight">{post.title}</h3>
-							<p class="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2 line-clamp-2">{post.description}</p>
-							<p class="text-xs text-gray-500">{post.date}</p>
-						</div>
-					</div>
-				</a>
-			))}
-        </div>
-
-        <nav class="flex justify-center items-center space-x-2 mt-8 sm:mt-12">
-            <a href="#" class="px-3 py-2 sm:px-4 text-white bg-green-600 rounded-md shadow-sm text-sm">1</a>
-        </nav>
-    </div>
-    
-    <aside class="lg:col-span-1 space-y-6 sm:space-y-8">
-        <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/50">
-            <h3 class="font-bold text-base sm:text-lg mb-3 sm:mb-4 border-l-4 border-green-600 pl-3">タグ一覧</h3>
-            <div class="space-y-1 sm:space-y-2">
-                {sortedTags.map(({ tag, count }) => (
-                    <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 last:border-b-0">
-                        <span class="text-sm sm:text-base text-gray-700">{tag}</span>
-                        <span class="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{count}</span>
+                <!-- タブ切り替え -->
+                <div class="mb-6">
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-8">
+                            <button 
+                                class="tab-button py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 border-green-600 text-green-600" 
+                                data-tab="internal"
+                            >
+                                内部記事
+                                <span class="ml-2 bg-green-100 text-green-600 py-1 px-2 rounded-full text-xs">{posts.length}</span>
+                            </button>
+                            <button 
+                                class="tab-button py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" 
+                                data-tab="zenn"
+                            >
+                                Zenn記事
+                                <span class="ml-2 bg-gray-100 text-gray-600 py-1 px-2 rounded-full text-xs">{zennArticles.length}</span>
+                            </button>
+                        </nav>
                     </div>
-                ))}
+                </div>
+
+                <!-- 内部記事タブ -->
+                <div id="internal-tab" class="tab-content">
+                    <div class="grid grid-cols-1 gap-4 sm:gap-6">
+                        {posts.map(post => (
+                            <a href={post.url} class="block bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                                <div class="flex items-start gap-3 sm:gap-4">
+                                    <div class="text-2xl sm:text-4xl flex-shrink-0">{post.emoji}</div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
+                                            {post.tags.slice(0, 2).map(tag => 
+                                                <span class="text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{tag}</span>
+                                            )}
+                                            {post.tags.length > 2 && (
+                                                <span class="text-xs text-gray-500">+{post.tags.length - 2}</span>
+                                            )}
+                                        </div>
+                                        <h3 class="font-bold text-sm sm:text-lg mb-1 sm:mb-2 leading-tight">{post.title}</h3>
+                                        <p class="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2 line-clamp-2">{post.description}</p>
+                                        <p class="text-xs text-gray-500">{post.date}</p>
+                                    </div>
+                                </div>
+                            </a>
+                        ))}
+                    </div>
+                </div>
+
+                <!-- Zenn記事タブ -->
+                <div id="zenn-tab" class="tab-content hidden">
+                    {zennResult.success ? (
+                        zennArticles.length > 0 ? (
+                            <div class="grid grid-cols-1 gap-4 sm:gap-6">
+                                {zennArticles.map((article: any, index: number) => (
+                                    <a href={article.url} target="_blank" rel="noopener noreferrer" class="block bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/50 hover:shadow-lg hover:-translate-y-1 transition-all">
+                                        <div class="flex items-start gap-3 sm:gap-4">
+                                            <div class="text-2xl sm:text-4xl flex-shrink-0">{article.emoji}</div>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center gap-1.5 sm:gap-2 mb-2 flex-wrap">
+                                                    <span class={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                                        article.type === 'tech' 
+                                                            ? 'bg-blue-100 text-blue-800' 
+                                                            : 'bg-purple-100 text-purple-800'
+                                                    }`}>
+                                                        {article.type}
+                                                    </span>
+                                                    {article.topics.slice(0, 2).map((topic: string, topicIndex: number) => 
+                                                        <span class="text-xs font-semibold bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">#{topic}</span>
+                                                    )}
+                                                    {article.topics.length > 2 && (
+                                                        <span class="text-xs text-gray-500">+{article.topics.length - 2}</span>
+                                                    )}
+                                                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M12 0L1.608 6v12L12 24l10.392-6V6L12 0zM8.423 16.307l-2.807-1.418V9.115l2.807 1.418v5.774zm7.154 0V10.533l2.807-1.418v5.774l-2.807 1.418z"/>
+                                                        </svg>
+                                                        Zenn
+                                                    </span>
+                                                </div>
+                                                <h3 class="font-bold text-sm sm:text-lg mb-1 sm:mb-2 leading-tight">{article.title}</h3>
+                                                <p class="text-xs text-gray-500">
+                                                    {article.published_at ? `公開日: ${new Date(article.published_at).toLocaleDateString('ja-JP')}` : article.date}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        ) : (
+                            <div class="text-center py-12">
+                                <div class="text-4xl mb-4">📝</div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Zenn記事がまだありません</h3>
+                                <p class="text-gray-600 mb-4">今後Zennで記事を公開予定です。</p>
+                                <a 
+                                    href="https://zenn.dev/takuma3737" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 0L1.608 6v12L12 24l10.392-6V6L12 0zM8.423 16.307l-2.807-1.418V9.115l2.807 1.418v5.774zm7.154 0V10.533l2.807-1.418v5.774l-2.807 1.418z"/>
+                                    </svg>
+                                    Zennプロフィールを見る
+                                </a>
+                            </div>
+                        )
+                    ) : (
+                        <div class="text-center py-12">
+                            <div class="text-4xl mb-4">⚠️</div>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Zenn記事の取得に失敗しました</h3>
+                            <p class="text-gray-600 mb-4">{zennResult.error}</p>
+                            <a 
+                                href="/zenn-test-secure" 
+                                class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                                詳細を確認する
+                            </a>
+                        </div>
+                    )}
+                </div>
+
+                <nav class="flex justify-center items-center space-x-2 mt-8 sm:mt-12">
+                    <a href="#" class="px-3 py-2 sm:px-4 text-white bg-green-600 rounded-md shadow-sm text-sm">1</a>
+                </nav>
             </div>
+            
+            <aside class="lg:col-span-1 space-y-6 sm:space-y-8">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/50">
+                    <h3 class="font-bold text-base sm:text-lg mb-3 sm:mb-4 border-l-4 border-green-600 pl-3">タグ一覧</h3>
+                    <div class="space-y-1 sm:space-y-2">
+                        {sortedTags.map(({ tag, count }) => (
+                            <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 last:border-b-0">
+                                <span class="text-sm sm:text-base text-gray-700">{tag}</span>
+                                <span class="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{count}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </aside>
         </div>
-    </aside>
-</div>
-</main>
+    </main>
+
+    <script>
+        // タブ切り替え機能
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-tab');
+
+                    // すべてのタブボタンの状態をリセット
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('border-green-600', 'text-green-600');
+                        btn.classList.add('border-transparent', 'text-gray-500');
+                    });
+
+                    // クリックされたタブボタンをアクティブにする
+                    button.classList.remove('border-transparent', 'text-gray-500');
+                    button.classList.add('border-green-600', 'text-green-600');
+
+                    // すべてのタブコンテンツを隠す
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+
+                    // 対象のタブコンテンツを表示
+                    const targetContent = document.getElementById(`${targetTab}-tab`);
+                    if (targetContent) {
+                        targetContent.classList.remove('hidden');
+                    }
+                });
+            });
+        });
+    </script>
 </Layout>
