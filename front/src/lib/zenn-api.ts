@@ -21,12 +21,20 @@ function getGitHubConfig(): GitHubConfig | null {
   const username = process.env.ZENN_GITHUB_USERNAME;
   const repository = process.env.ZENN_REPO_NAME;
 
+  // デバッグ情報を詳細に出力
+  console.log("🔍 環境変数デバッグ情報:");
+  console.log("GITHUB_TOKEN:", token ? `設定済み (${token.length}文字)` : "❌ 未設定");
+  console.log("ZENN_GITHUB_USERNAME:", username || "❌ 未設定");
+  console.log("ZENN_REPO_NAME:", repository || "❌ 未設定");
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+
   if (!token || !username || !repository) {
-    console.error("❌ 必要な環境変数が設定されていません:", {
-      GITHUB_TOKEN: token ? "✅" : "❌",
-      ZENN_GITHUB_USERNAME: username ? "✅" : "❌",
-      ZENN_REPO_NAME: repository ? "✅" : "❌",
-    });
+    const missingVars = [];
+    if (!token) missingVars.push("GITHUB_TOKEN");
+    if (!username) missingVars.push("ZENN_GITHUB_USERNAME");
+    if (!repository) missingVars.push("ZENN_REPO_NAME");
+    
+    console.error(`❌ 必要な環境変数が設定されていません: ${missingVars.join(", ")}`);
     return null;
   }
 
@@ -78,13 +86,18 @@ async function fetchZennArticlesFromGitHub(
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ GitHub API エラー: ${response.status} ${response.statusText}`);
+      console.error(`レスポンス内容: ${errorText}`);
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const result: GraphQLResponse = await response.json();
+    console.log(`✅ GitHub API レスポンス受信 (status: ${response.status})`);
 
     if (result.errors) {
       const errorMessages = result.errors.map((e) => e.message).join(", ");
+      console.error(`❌ GraphQL エラー: ${errorMessages}`);
       throw new Error(`GraphQL エラー: ${errorMessages}`);
     }
 
@@ -152,11 +165,16 @@ export async function fetchZennArticles(): Promise<ApiResult<ZennArticle[]>> {
 
     const config = getGitHubConfig();
     if (!config) {
+      const missingVars = [];
+      if (!process.env.GITHUB_TOKEN) missingVars.push("GITHUB_TOKEN");
+      if (!process.env.ZENN_GITHUB_USERNAME) missingVars.push("ZENN_GITHUB_USERNAME");
+      if (!process.env.ZENN_REPO_NAME) missingVars.push("ZENN_REPO_NAME");
+      
       return {
         success: false,
         data: [],
         message: "環境変数の設定に問題があります",
-        error: "GITHUB_TOKEN, ZENN_GITHUB_USERNAME, ZENN_REPO_NAME の設定を確認してください",
+        error: `以下の環境変数が設定されていません: ${missingVars.join(", ")}`,
       };
     }
 
@@ -184,7 +202,7 @@ export async function fetchZennArticles(): Promise<ApiResult<ZennArticle[]>> {
  * Zenn記事を取得（キャッシュ付き）
  */
 export async function fetchZennArticlesWithCache(
-  ttl: number = 5 * 60 * 1000, // デフォルト: 5分
+  ttl: number = process.env.NODE_ENV === 'production' ? 2 * 60 * 1000 : 5 * 60 * 1000, // 本番: 2分, 開発: 5分
 ): Promise<ApiResult<ZennArticle[]>> {
   const now = Date.now();
 
