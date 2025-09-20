@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@vercel/speed-insights": "^1.2.0",
-    "astro": "^5.11.0"
+    "astro": "^5.11.0",
+    "dotenv": "^17.2.2",
+    "gray-matter": "^4.0.3"
   },
   "devDependencies": {
     "@astrojs/tailwind": "^5.1.5",
