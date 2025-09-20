@@ -244,70 +244,7 @@ const sortedTags = Object.entries(tagCounts)
       </div>
 
       <aside class="lg:col-span-1 space-y-6 sm:space-y-8">
-        <div
-          class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/50"
-        >
-          <h3
-            class="font-bold text-base sm:text-lg mb-3 sm:mb-4 border-l-4 border-green-600 pl-3"
-          >
-            タグ一覧
-          </h3>
-          <div class="space-y-1 sm:space-y-2">
-            {
-              sortedTags.map(({ tag, count }) => (
-                <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 last:border-b-0">
-                  <span class="text-sm sm:text-base text-gray-700">{tag}</span>
-                  <span class="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                    {count}
-                  </span>
-                </div>
-              ))
-            }
-          </div>
-        </div>
-      </aside>
-    </div>
-  </main>
-
-  <script>
-    // タブ切り替え機能
-    document.addEventListener("DOMContentLoaded", () => {
-      const tabButtons = document.querySelectorAll(".tab-button");
-      const tabContents = document.querySelectorAll(".tab-content");
-
-      tabButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-          const targetTab = button.getAttribute("data-tab");
-
-          // すべてのタブボタンの状態をリセット
-          tabButtons.forEach((btn) => {
-            btn.classList.remove("border-green-600", "text-green-600");
-            btn.classList.add("border-transparent", "text-gray-500");
-          });
-
-          // クリックされたタブボタンをアクティブにする
-          button.classList.remove("border-transparent", "text-gray-500");
-          button.classList.add("border-green-600", "text-green-600");
-
-          // すべてのタブコンテンツを隠す
-          tabContents.forEach((content) => {
-            content.classList.add("hidden");
-          });
-
-          // 対象のタブコンテンツを表示
-          const targetContent = document.getElementById(`${targetTab}-tab`);
-          if (targetContent) {
-            targetContent.classList.remove("hidden");
-          }
-        });
-      });
-    });
-  </script>
-</Layout>
-        </nav>
-      </div>
-
-      <aside class="lg:col-span-1 space-y-6 sm:space-y-8">
+        <!-- タグ一覧 -->
         <div
           class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200/50"
         >
