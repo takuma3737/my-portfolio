@@ -71,7 +71,7 @@ const sortedTags = Object.entries(tagCounts)
           <div class="border-b border-gray-200">
             <nav class="-mb-px flex space-x-8">
               <button
-                class="tab-button py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 border-green-600 text-green-600"
+                class="tab-button py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 border-green-600 text-green-600 hover:border-green-700 hover:text-green-700"
                 data-tab="internal"
               >
                 個人記事
@@ -81,7 +81,7 @@ const sortedTags = Object.entries(tagCounts)
                 >
               </button>
               <button
-                class="tab-button py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                class="tab-button py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300"
                 data-tab="zenn"
               >
                 Zenn記事
@@ -298,14 +298,33 @@ const sortedTags = Object.entries(tagCounts)
               "text-blue-600"
             );
             btn.classList.add("border-transparent", "text-gray-500");
+
+            // ホバー効果を再設定
+            const tabType = btn.getAttribute("data-tab");
+            if (tabType === "internal") {
+              btn.classList.add(
+                "hover:text-green-600",
+                "hover:border-green-300"
+              );
+            } else if (tabType === "zenn") {
+              btn.classList.add("hover:text-blue-600", "hover:border-blue-300");
+            }
           });
 
           // クリックされたタブボタンをアクティブにする
           button.classList.remove("border-transparent", "text-gray-500");
           if (targetTab === "internal") {
             button.classList.add("border-green-600", "text-green-600");
+            button.classList.remove(
+              "hover:text-green-600",
+              "hover:border-green-300"
+            );
           } else if (targetTab === "zenn") {
             button.classList.add("border-blue-600", "text-blue-600");
+            button.classList.remove(
+              "hover:text-blue-600",
+              "hover:border-blue-300"
+            );
           }
 
           // すべてのタブコンテンツを隠す
