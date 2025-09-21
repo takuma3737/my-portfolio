@@ -86,7 +86,7 @@ const sortedTags = Object.entries(tagCounts)
               >
                 Zenn記事
                 <span
-                  class="ml-2 bg-gray-100 text-gray-600 py-1 px-2 rounded-full text-xs"
+                  class="ml-2 bg-blue-100 text-blue-600 py-1 px-2 rounded-full text-xs"
                   >{zennArticles.length}</span
                 >
               </button>
@@ -264,26 +264,10 @@ const sortedTags = Object.entries(tagCounts)
           </h3>
           <div class="space-y-1 sm:space-y-2">
             {
-              sortedTags.map(({ tag, count, local, zenn, isMixed }) => (
+              sortedTags.map(({ tag, count }) => (
                 <div class="flex justify-between items-center py-1.5 sm:py-2 border-b border-gray-100 last:border-b-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm sm:text-base text-gray-700">
-                      {tag}
-                    </span>
-                    <div class="flex gap-1">
-                      {local > 0 && (
-                        <span class="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
-                          個人{local}
-                        </span>
-                      )}
-                      {zenn > 0 && (
-                        <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
-                          Zenn{zenn}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span class="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full font-medium">
+                  <span class="text-sm sm:text-base text-gray-700">{tag}</span>
+                  <span class="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                     {count}
                   </span>
                 </div>
@@ -307,13 +291,22 @@ const sortedTags = Object.entries(tagCounts)
 
           // すべてのタブボタンの状態をリセット
           tabButtons.forEach((btn) => {
-            btn.classList.remove("border-green-600", "text-green-600");
+            btn.classList.remove(
+              "border-green-600",
+              "text-green-600",
+              "border-blue-600",
+              "text-blue-600"
+            );
             btn.classList.add("border-transparent", "text-gray-500");
           });
 
           // クリックされたタブボタンをアクティブにする
           button.classList.remove("border-transparent", "text-gray-500");
-          button.classList.add("border-green-600", "text-green-600");
+          if (targetTab === "internal") {
+            button.classList.add("border-green-600", "text-green-600");
+          } else if (targetTab === "zenn") {
+            button.classList.add("border-blue-600", "text-blue-600");
+          }
 
           // すべてのタブコンテンツを隠す
           tabContents.forEach((content) => {
