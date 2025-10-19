@@ -8,6 +8,7 @@ import type {
   ApiResult,
   GitHubConfig,
   CacheEntry,
+  GitHubTreeEntry,
 } from "../types/zenn";
 
 // 記事のキャッシュ
@@ -44,13 +45,14 @@ function getGitHubConfig(): GitHubConfig | null {
 /**
  * GitHub GraphQL APIでZenn記事を取得
  */
-async function fetchZennArticlesFromGitHub(
+async function requestGitHubTree(
   config: GitHubConfig,
-): Promise<ZennArticle[]> {
+  expression: string,
+): Promise<GitHubTreeEntry[]> {
   const query = `
-    query GetZennArticles($owner: String!, $name: String!) {
+    query GetZennDirectory($owner: String!, $name: String!, $expression: String!) {
       repository(owner: $owner, name: $name) {
-        object(expression: "HEAD:articles") {
+        object(expression: $expression) {
           ... on Tree {
             entries {
               name
@@ -70,78 +72,130 @@ async function fetchZennArticlesFromGitHub(
   const variables = {
     owner: config.username,
     name: config.repository,
+    expression,
   };
 
+  console.log(`🔍 GitHub APIにリクエスト (expression: ${expression})`);
+
+  const response = await fetch("https://api.github.com/graphql", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.token}`,
+      "Content-Type": "application/json",
+      "User-Agent": "Zenn-Portfolio-Integration/1.0",
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ GitHub API エラー: ${response.status} ${response.statusText}`);
+    console.error(`レスポンス内容: ${errorText}`);
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  const result: GraphQLResponse = await response.json();
+  console.log(`✅ GitHub API レスポンス受信 (status: ${response.status})`);
+
+  if (result.errors) {
+    const errorMessages = result.errors.map((e) => e.message).join(", ");
+    console.error(`❌ GraphQL エラー: ${errorMessages}`);
+    throw new Error(`GraphQL エラー: ${errorMessages}`);
+  }
+
+  const treeObject = result.data?.repository?.object;
+
+  if (!treeObject) {
+    console.warn(`⚠️ 指定したパスにTreeが見つかりませんでした: ${expression}`);
+    return [];
+  }
+
+  return treeObject.entries || [];
+}
+
+interface MarkdownFile {
+  path: string;
+  name: string;
+  content: string;
+}
+
+async function fetchMarkdownFiles(
+  config: GitHubConfig,
+  directory: string = "articles",
+): Promise<MarkdownFile[]> {
+  const expression = `HEAD:${directory}`;
+  const entries = await requestGitHubTree(config, expression);
+  const markdownFiles: MarkdownFile[] = [];
+
+  console.log(`📁 ${directory} から ${entries.length} 件のエントリを取得`);
+
+  for (const entry of entries) {
+    const entryPath = `${directory}/${entry.name}`;
+
+    if (entry.type === "blob" && entry.name.toLowerCase().endsWith(".md")) {
+      markdownFiles.push({
+        path: entryPath,
+        name: entry.name,
+        content: entry.object?.text || "",
+      });
+      console.log(`📝 Markdownファイルを検出: ${entryPath}`);
+    } else if (entry.type === "tree") {
+      console.log(`📂 サブディレクトリを探索: ${entryPath}`);
+      const nestedFiles = await fetchMarkdownFiles(config, entryPath);
+      markdownFiles.push(...nestedFiles);
+    } else {
+      console.log(`ℹ️ 対象外のエントリをスキップ: ${entryPath}`);
+    }
+  }
+
+  return markdownFiles;
+}
+
+async function fetchZennArticlesFromGitHub(
+  config: GitHubConfig,
+): Promise<ZennArticle[]> {
   try {
-    console.log(`🔍 GitHub APIにリクエスト: ${config.username}/${config.repository}`);
+    console.log(
+      `🔍 GitHub記事の探索を開始: ${config.username}/${config.repository}`,
+    );
 
-    const response = await fetch("https://api.github.com/graphql", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        "Content-Type": "application/json",
-        "User-Agent": "Zenn-Portfolio-Integration/1.0",
-      },
-      body: JSON.stringify({ query, variables }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ GitHub API エラー: ${response.status} ${response.statusText}`);
-      console.error(`レスポンス内容: ${errorText}`);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const result: GraphQLResponse = await response.json();
-    console.log(`✅ GitHub API レスポンス受信 (status: ${response.status})`);
-
-    if (result.errors) {
-      const errorMessages = result.errors.map((e) => e.message).join(", ");
-      console.error(`❌ GraphQL エラー: ${errorMessages}`);
-      throw new Error(`GraphQL エラー: ${errorMessages}`);
-    }
-
-    const entries = result.data?.repository?.object?.entries || [];
+    const markdownFiles = await fetchMarkdownFiles(config);
     const articles: ZennArticle[] = [];
 
-    console.log(`📁 articlesディレクトリから ${entries.length} 個のファイルを発見`);
+    console.log(`🗂️ 解析対象のMarkdownファイル数: ${markdownFiles.length}`);
 
-    for (const entry of entries) {
-      if (entry.type === "blob" && entry.name.endsWith(".md")) {
-        try {
-          const markdownContent = entry.object?.text || "";
-          const { data: frontMatter } = matter(markdownContent);
-          const frontMatterData = frontMatter as ZennFrontMatter;
+    for (const file of markdownFiles) {
+      try {
+        const { data: frontMatter } = matter(file.content);
+        const frontMatterData = frontMatter as ZennFrontMatter;
 
-          if (frontMatterData.published) {
-            const slug = entry.name.replace(".md", "");
-            const article: ZennArticle = {
-              title: frontMatterData.title || "タイトル未設定",
-              emoji: frontMatterData.emoji || "📝",
-              type: frontMatterData.type || "tech",
-              topics: Array.isArray(frontMatterData.topics)
-                ? frontMatterData.topics
-                : [],
-              published: frontMatterData.published,
-              published_at: frontMatterData.published_at,
-              date: frontMatterData.published_at || "日付未設定",
-              slug,
-              path: `articles/${entry.name}`,
-              url: `https://zenn.dev/${config.username}/articles/${slug}`,
-            };
+        if (frontMatterData.published) {
+          const slug = file.name.replace(/\.md$/i, "");
+          const article: ZennArticle = {
+            title: frontMatterData.title || "タイトル未設定",
+            emoji: frontMatterData.emoji || "📝",
+            type: frontMatterData.type || "tech",
+            topics: Array.isArray(frontMatterData.topics)
+              ? frontMatterData.topics
+              : [],
+            published: frontMatterData.published,
+            published_at: frontMatterData.published_at,
+            date: frontMatterData.published_at || "日付未設定",
+            slug,
+            path: file.path,
+            url: `https://zenn.dev/${config.username}/articles/${slug}`,
+          };
 
-            articles.push(article);
-            console.log(`✅ 記事を追加: ${article.title}`);
-          } else {
-            console.log(`⏸️ 未公開記事をスキップ: ${frontMatterData.title || entry.name}`);
-          }
-        } catch (parseError) {
-          console.error(`❌ ファイル解析エラー (${entry.name}):`, parseError);
+          articles.push(article);
+          console.log(`✅ 記事を追加: ${article.title} (${file.path})`);
+        } else {
+          console.log(`⏸️ 未公開記事をスキップ: ${frontMatterData.title || file.path}`);
         }
+      } catch (parseError) {
+        console.error(`❌ ファイル解析エラー (${file.path}):`, parseError);
       }
     }
 
-    // 日付でソート（新しい順）
     articles.sort((a, b) => {
       const dateA = new Date(a.published_at || a.date).getTime();
       const dateB = new Date(b.published_at || b.date).getTime();

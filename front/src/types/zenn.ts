@@ -23,17 +23,19 @@ export interface ZennArticle {
   content?: string; // 記事本文（必要な場合）
 }
 
+export interface GitHubTreeEntry {
+  name: string;
+  type: string;
+  object?: {
+    text?: string;
+  };
+}
+
 export interface GraphQLResponse {
   data?: {
     repository?: {
       object?: {
-        entries?: Array<{
-          name: string;
-          type: string;
-          object?: {
-            text?: string;
-          };
-        }>;
+        entries?: GitHubTreeEntry[];
       };
     };
   };
