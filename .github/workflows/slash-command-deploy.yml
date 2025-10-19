@@ -1,0 +1,32 @@
+name: Slash Command Deploy
+
+on:
+  issue_comment:
+    types:
+      - created
+      - edited
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  dispatch:
+    name: Dispatch Deploy Command
+    if: >
+      github.event.issue.pull_request != null &&
+      contains(github.event.comment.body, '/deploy')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch /deploy command
+        uses: peter-evans/slash-command-dispatch@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commands: |
+            deploy
+          permission: write
+          repository: ${{ github.repository }}
+          dispatch-type: repository
+          issue-type: pull-request
+          allow-edits: true
